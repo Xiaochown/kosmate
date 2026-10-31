@@ -93,6 +93,38 @@ function showReply() {
 }
 function clearReply() { $("reply").classList.remove("show"); }
 
+function updateVoiceChip() {
+  const el = $("voiceChip");
+  if (!el) return;
+  const o = (S.voiceOptions || []).find((x) => x.key === S.voiceKey) || (S.voiceOptions || [])[0] || {};
+  const label = o.label || "Voice";
+  const nama = label.split("—")[0].split("(")[0].trim();
+  el.textContent = nama + " · " + String(S.tempo || "").replace("%", "") + "%";
+  el.onclick = () => {
+    openSheet("settings");
+    const sel = $("setVoice");
+    if (sel) setTimeout(() => sel.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
+  };
+}
+
+/* ?debug=1 -> tampilkan error JavaScript langsung di layar HP */
+if (location.search.indexOf("debug=1") >= 0) {
+  const box = document.createElement("pre");
+  box.style.cssText =
+    "position:fixed;left:0;right:0;top:0;max-height:45vh;overflow:auto;z-index:9999;margin:0;" +
+    "padding:8px;background:#111;color:#6f6;font:11px/1.45 monospace;white-space:pre-wrap";
+  const tulis = (m) => { box.textContent += m + "\n"; };
+  document.addEventListener("DOMContentLoaded", () => {
+    document.body.appendChild(box);
+    tulis("debug on · " + location.href);
+    tulis("UA: " + navigator.userAgent.slice(0, 90));
+  });
+  window.addEventListener("error", (e) =>
+    tulis("ERR " + e.message + " @" + (e.filename || "").split("/").pop() + ":" + (e.lineno || "")));
+  window.addEventListener("unhandledrejection", (e) =>
+    tulis("REJ " + ((e.reason && e.reason.message) || e.reason)));
+}
+
 /* ---------------- TTS ---------------- */
 let speechGen = 0;      // naik tiap kali user motong ucapan
 let speechJobs = [];    // {gen, text, audio: Promise<{blob}|{browser}>}
@@ -707,6 +739,7 @@ async function loadVoices() {
     const sel = $("setVoice");
     if (!sel) return;
     sel.innerHTML = "";
+    S.voiceOptions = j.options || [];
     (j.options || []).forEach((o) => {
       const opt = document.createElement("option");
       opt.value = o.key;
@@ -721,6 +754,7 @@ async function loadVoices() {
         ? "Fish Audio ready. Pick one — if it fails, it stays <b>silent</b> instead of switching voice."
         : "FISH_API_KEY is missing in .env — Fish voices are unavailable. Add it, then reload.";
     }
+    updateVoiceChip();
   } catch (e) {
     diag("tts", "voice list failed: " + e.message);
   }
@@ -1009,7 +1043,14 @@ async function boot() {
     const engine = h.voice ? h.voice.label : (h.fish_key ? "Fish" : "edge");
     if ($("brandSub")) $("brandSub").textContent = engine;
     S.serverInfo = { voice: h.tts_voice, rate: h.tts_rate, strict: h.tts_strict, fish: h.fish_key, ref: h.fish_ref, engine, active: h.voice };
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("sw.js", { scope: "./" })
+        .then(() => diag("app", "service worker aktif"))
+        .catch((e) => diag("app", "SW gagal: " + e.message));
+    }
     await loadVoices();
+    updateVoiceChip();
     await loadServerSettings();
     // kalau voice aktif berbasis Fish, matikan cadangan suara HP biar timbre gak ganti
     if (h.voice && h.voice.engine === "fish") {

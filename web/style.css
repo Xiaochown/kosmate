@@ -425,3 +425,15 @@ body[data-state="speaking"] .status { color: var(--ink); }
   .card.wide { flex-direction: column; }
   .card.wide img { width: 100%; height: 96px; border-right: 0; border-bottom: 1px solid var(--line); }
 }
+
+/* chip suara di beranda */
+.voicechip {
+  margin: 10px auto 0;
+  height: 32px; padding: 0 14px;
+  border: 1px solid var(--line-2); border-radius: 999px;
+  background: var(--bg); color: var(--ink);
+  font: inherit; font-size: 12.5px; cursor: pointer;
+  display: inline-flex; align-items: center;
+}
+.voicechip:hover { border-color: var(--ink); }
+.voicechip:active { background: var(--soft); }
