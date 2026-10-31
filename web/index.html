@@ -1,62 +1,45 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b0d10">
-  <title>Kosmate — teman ngobrol</title>
+  <meta name="theme-color" content="#ffffff">
+  <title>Companion</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body data-state="idle">
   <div class="app">
 
     <header class="topbar">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true">K</span>
-        <span class="brand-text">
-          <strong id="brandName">Kosmate</strong>
-          <small id="brandSub">menyiapkan…</small>
-        </span>
+      <div class="statusline">
+        <span class="dot" id="healthDot"></span>
+        <span id="brandSub">connecting…</span>
       </div>
-      <div class="topbar-actions">
-        <button class="btn btn-quiet" id="memBtn" type="button">
-          <span class="dot" id="healthDot"></span>
-          <span>Memori</span>
-          <span class="count" id="memCount">0</span>
-        </button>
-        <button class="btn btn-quiet" id="diagBtn" type="button">
-          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M1 8h3l1.5-4 3 8L10 8h5"/>
-          </svg>
-          <span>Diagnostik</span>
-        </button>
-        <button class="btn btn-icon" id="gear" type="button" aria-label="Pengaturan">
-          <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4">
-            <circle cx="8" cy="8" r="2.2"/>
-            <path d="M8 1.6v1.7M8 12.7v1.7M1.6 8h1.7M12.7 8h1.7M3.5 3.5l1.2 1.2M11.3 11.3l1.2 1.2M12.5 3.5l-1.2 1.2M4.7 11.3l-1.2 1.2"/>
-          </svg>
-        </button>
-      </div>
+      <nav class="topnav">
+        <button class="link" id="memBtn" type="button">Memory <span class="count" id="memCount">0</span></button>
+        <button class="link" id="diagBtn" type="button">Diagnostics</button>
+        <button class="link" id="gear" type="button">Settings</button>
+      </nav>
     </header>
 
-    <div class="mode-row" role="group" aria-label="Mode ngobrol">
-      <button class="mode-chip active" data-mode="temen" type="button">Teman</button>
+    <div class="mode-row" role="group" aria-label="Conversation mode">
+      <button class="mode-chip active" data-mode="temen" type="button">Companion</button>
       <button class="mode-chip" data-mode="tutor" type="button">Tutor</button>
-      <button class="mode-chip" data-mode="kerja" type="button">Kerja</button>
+      <button class="mode-chip" data-mode="kerja" type="button">Work</button>
     </div>
 
     <main class="stage">
-      <button class="orb" id="orb" type="button" aria-label="Mulai atau hentikan bicara">
+      <button class="orb" id="orb" type="button" aria-label="Start or stop speaking">
         <span class="orb-ring" aria-hidden="true"></span>
         <span class="orb-core" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-            <rect x="9" y="3" width="6" height="11" rx="3"/>
-            <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/>
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <rect x="9" y="3.5" width="6" height="10.5" rx="3"/>
+            <path d="M6 11.5a6 6 0 0 0 12 0M12 17.5V21"/>
           </svg>
         </span>
       </button>
 
-      <p class="status" id="status">santai… ketuk orb buat ngobrol</p>
+      <p class="status" id="status">Tap to talk</p>
       <p class="live" id="live"></p>
 
       <section class="reply" id="reply" aria-live="polite">
@@ -66,106 +49,114 @@
     </main>
 
     <footer class="composer">
-      <input id="input" type="text" placeholder="Tulis juga bisa…" autocomplete="off" enterkeyhint="send">
-      <button class="btn btn-primary" id="sendBtn" type="button">Kirim</button>
-      <button class="btn btn-outline" id="micBtn" type="button">Bicara</button>
+      <input id="input" type="text" placeholder="Message" autocomplete="off" enterkeyhint="send">
+      <button class="round" id="micBtn" type="button" aria-label="Record">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <rect x="9" y="3.5" width="6" height="10.5" rx="3"/>
+          <path d="M6 11.5a6 6 0 0 0 12 0M12 17.5V21"/>
+        </svg>
+      </button>
+      <button class="round solid" id="sendBtn" type="button" aria-label="Send">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h13M13 6l6 6-6 6"/>
+        </svg>
+      </button>
     </footer>
 
-    <!-- pengaturan -->
+    <!-- settings -->
     <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
       <div class="sheet-head">
-        <h2 id="sheetTitle">Pengaturan</h2>
-        <button class="btn btn-icon" id="closeSheet" type="button" aria-label="Tutup">✕</button>
+        <h2 id="sheetTitle">Settings</h2>
+        <button class="link" id="closeSheet" type="button">Close</button>
       </div>
-      <p class="hint" id="sheetHint">Semua tersimpan otomatis di HP ini.</p>
+      <p class="hint" id="sheetHint">Saved automatically on this phone.</p>
 
       <section class="group">
-        <h3 class="group-title">Suara</h3>
+        <h3 class="group-title">Voice</h3>
         <div class="field">
           <label for="setVoice">Voice</label>
           <select id="setVoice"></select>
-          <p class="tiny" id="voiceNote">memuat pilihan…</p>
+          <p class="tiny" id="voiceNote">Loading…</p>
         </div>
         <div class="field">
-          <label for="setTempo">Tempo</label>
+          <label for="setTempo">Speed</label>
           <select id="setTempo">
-            <option value="-30%">Sangat pelan · 0.70x</option>
-            <option value="-20%">Pelan · 0.80x</option>
-            <option value="-15%">Agak pelan · 0.85x</option>
-            <option value="-12%">Agak pelan · 0.88x</option>
-            <option value="+0%">Normal · 1.00x</option>
+            <option value="-30%">Very slow · 0.70×</option>
+            <option value="-20%">Slow · 0.80×</option>
+            <option value="-15%">Gentle · 0.85×</option>
+            <option value="-12%">Slightly slow · 0.88×</option>
+            <option value="+0%">Normal · 1.00×</option>
           </select>
         </div>
         <div class="row">
-          <span class="row-label">Cadangan suara HP<small>kalau server gagal, diam — bukan ganti suara</small></span>
-          <button class="switch on" id="setFallback" type="button"><span class="dot ok"></span>aktif</button>
+          <span class="row-label">Device voice fallback<small>if the server fails, stay silent instead of switching voice</small></span>
+          <button class="switch on" id="setFallback" type="button"><span class="dot ok"></span>on</button>
         </div>
         <div class="field">
-          <label for="setTtsMode">Mesin suara</label>
+          <label for="setTtsMode">Speech engine</label>
           <select id="setTtsMode">
-            <option value="auto">Auto — server dulu, lalu HP</option>
-            <option value="server">Server saja — paling natural</option>
-            <option value="browser">HP saja — offline</option>
+            <option value="auto">Auto — server first, then device</option>
+            <option value="server">Server only — most natural</option>
+            <option value="browser">Device only — offline</option>
           </select>
         </div>
         <div class="field">
-          <label for="setSpeechChunk">Ucapkan per</label>
+          <label for="setSpeechChunk">Speak in</label>
           <select id="setSpeechChunk">
-            <option value="block">Satu blok utuh — intonasi nyambung (disarankan)</option>
-            <option value="sentence">Per kalimat — mulai cepat, nada ke-reset</option>
+            <option value="block">One block — continuous intonation (recommended)</option>
+            <option value="sentence">Per sentence — starts sooner, intonation resets</option>
           </select>
-          <p class="tiny">Satu blok = satu request TTS. Kalau dipotong tiap titik, tiap potongan mulai dari intonasi baru — itu yang bikin nadanya "kereset".</p>
+          <p class="tiny">One block = one TTS request. Splitting at every period restarts the intonation, which is what makes it sound choppy.</p>
         </div>
       </section>
 
       <section class="group">
-        <h3 class="group-title">Dengar &amp; jawab</h3>
+        <h3 class="group-title">Listening</h3>
         <div class="row">
-          <span class="row-label">Dengerin otomatis<small>mic nyala sendiri setelah Kai selesai</small></span>
-          <button class="switch" id="setAutoListen" type="button"><span class="dot"></span>nonaktif</button>
+          <span class="row-label">Auto listen<small>microphone reopens after the reply finishes</small></span>
+          <button class="switch" id="setAutoListen" type="button"><span class="dot"></span>off</button>
         </div>
         <div class="row">
-          <span class="row-label">Ucapkan balasan<small>matikan kalau mau teks saja</small></span>
-          <button class="switch on" id="setSpeak" type="button"><span class="dot ok"></span>aktif</button>
+          <span class="row-label">Speak replies<small>turn off for text only</small></span>
+          <button class="switch on" id="setSpeak" type="button"><span class="dot ok"></span>on</button>
         </div>
         <div class="grid-2">
           <div class="field">
-            <label for="setSilence">Jeda dengerin (ms)</label>
+            <label for="setSilence">Silence wait (ms)</label>
             <input id="setSilence" type="text" inputmode="numeric" value="900">
           </div>
           <div class="field">
-            <label for="setCooldown">Jeda setelah bicara (ms)</label>
+            <label for="setCooldown">Post-speech delay (ms)</label>
             <input id="setCooldown" type="text" inputmode="numeric" value="900">
           </div>
         </div>
-        <p class="tiny">Jeda dengerin 300–60000 (14 detik = <code>14000</code>) — makin besar, makin sabar nunggu lu selesai ngomong. Jeda setelah bicara 200–15000.</p>
+        <p class="tiny">Silence wait 300–60000 (14 s = <code>14000</code>): how long it waits before assuming you are done. Post-speech delay 200–15000: raise it if the mic picks up its own voice.</p>
       </section>
 
       <section class="group">
-        <h3 class="group-title">Memori</h3>
+        <h3 class="group-title">Memory</h3>
         <p class="tiny" id="memStats">—</p>
         <div class="facts" id="facts"></div>
-        <p class="tiny" id="factHint">Kosong. Ajak ngobrol dulu — Kai nyatet fakta penting sendiri.</p>
+        <p class="tiny" id="factHint">Empty. Start a conversation — facts are saved automatically.</p>
       </section>
 
       <div class="sheet-foot">
-        <span class="tiny">Kosmate · prototype</span>
-        <button class="btn btn-outline" id="closeSheet2" type="button" onclick="document.getElementById('closeSheet').click()">Tutup</button>
+        <span class="tiny">Prototype</span>
+        <button class="btn" id="closeSheet2" type="button" onclick="document.getElementById('closeSheet').click()">Done</button>
       </div>
     </div>
 
-    <!-- diagnostik -->
+    <!-- diagnostics -->
     <div class="sheet" id="diagSheet" role="dialog" aria-modal="true" aria-labelledby="diagTitle">
       <div class="sheet-head">
-        <h2 id="diagTitle">Diagnostik</h2>
-        <button class="btn btn-icon" id="closeDiag" type="button" aria-label="Tutup">✕</button>
+        <h2 id="diagTitle">Diagnostics</h2>
+        <button class="link" id="closeDiag" type="button">Close</button>
       </div>
-      <p class="hint">Kalau suara atau mic bermasalah, jawabannya ada di sini.</p>
+      <p class="hint">If sound or the mic misbehaves, the answer is here.</p>
       <div class="diag-list" id="diagBox"></div>
       <div class="sheet-foot">
-        <button class="btn btn-outline" id="diagTtsTest" type="button">Tes suara</button>
-        <button class="btn btn-outline" id="diagMicTest" type="button">Tes mic</button>
-        <button class="btn btn-primary" id="closeDiag2" type="button" onclick="document.getElementById('closeDiag').click()">Selesai</button>
+        <button class="btn" id="diagTtsTest" type="button">Test voice</button>
+        <button class="btn" id="diagMicTest" type="button">Test mic</button>
       </div>
     </div>
 

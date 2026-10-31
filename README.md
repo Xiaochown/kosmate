@@ -172,14 +172,14 @@ python scripts/fish_voice_set.py <model_id>
 
 
 
-## UI (v0.6)
+## UI (v0.9)
 
-Monokrom ala Linear, tanpa gradient: `#0b0d10` latar, `#15171b` surface, `#262a31` border,
-satu aksen `#5e6ad2`, body 15px. Orb 172px dengan 4 state (`idle` / `listening` / `thinking` /
-`speaking`) yang beda warna, ring, dan animasi. Semua tombol punya label teks, tinggi 44px,
-`hover` / `active` / `focus-visible`. Pengaturan dikelompokkan: Suara, Dengar & jawab, Memori.
-Verifikasi visual tidak bisa lewat screenshot di box proot ini (Chromium mati) — dipakai
-`scripts/ui_v*_test.cjs` (jsdom) + `scripts/smoke_py.py` (11 endpoint).
+Bahasa Inggris, monokrom putih–hitam dengan garis rambut (ala Gemini/Claude/ChatGPT):
+latar `#ffffff`, tinta `#0d0d0f`, garis `#e7e8ea`, tanpa gradient, tanpa logo/nama di header
+(header 48px: titik status + Memory / Diagnostics / Settings). Orb 148px dengan state
+`idle` / `listening` / `thinking` / `speaking`. Composer: input pill + tombol bulat hitam.
+Verifikasi visual tidak bisa lewat screenshot di box proot ini — dipakai suite jsdom
+(`scripts/ui_v*_test.cjs`) + `scripts/smoke_py.py`.
 
 ## Prosodi: satu blok, bukan per kalimat
 

@@ -29,7 +29,7 @@ const S = {
   lastSpoken: "",
   cooldownMs: 900,
   speechChunk: "block", // "block" = satu blok utuh (intonasi nyambung) | "sentence" = per kalimat
-  chunkChars: 420,
+  chunkChars: 400, // potongan maksimum; potongan berikutnya di-prefetch saat yang ini diputar
   listenTimer: null,
   stopRequested: false,
   cancelSpeech: null,
@@ -67,10 +67,10 @@ function setState(st) {
   S.state = st;
   document.body.dataset.state = st;
   const label = {
-    idle: "santai… ketuk orb buat ngobrol",
-    listening: "gue dengerin…",
-    thinking: "mikir sebentar…",
-    speaking: "lagi ngomong…",
+    idle: "Tap to talk",
+    listening: "Listening…",
+    thinking: "Thinking…",
+    speaking: "Speaking…",
   }[st] || "";
   setStatus(label);
 }
@@ -86,33 +86,106 @@ function escapeHtml(s) {
 }
 function showReply() {
   const r = $("reply");
-  $("replyYou").textContent = S.youSaid ? "lu: " + S.youSaid : "";
+  $("replyYou").textContent = S.youSaid ? "You: " + S.youSaid : "";
   $("replyText").textContent = S.replyText;
   if (S.replyText) r.classList.add("show");
 }
 function clearReply() { $("reply").classList.remove("show"); }
 
 /* ---------------- TTS ---------------- */
-let speakChain = Promise.resolve();
-let speechQueue = 0; // jumlah kalimat yang belum selesai diucapkan
-let speechGen = 0; // naik setiap kali user memotong; antrean lama jadi basi
+let speechGen = 0;      // naik tiap kali user motong ucapan
+let speechJobs = [];    // {gen, text, audio: Promise<{blob}|{browser}>}
+let draining = false;   // sedang memutar antrean
 let currentAudio = null;
 
 function speakable(t) {
   return (t || "").replace(/[*_`#>~]/g, "").replace(/\[(.*?)\]\(.*?\)/g, "$1").trim();
 }
 
+/* Antrean TTS ber-prefetch: sampai 2 potongan digenerate paralel, jadi saat
+   potongan sekarang sedang diputar, potongan berikutnya sudah siap. */
+let ttsInFlight = 0;
+const ttsWaiting = [];
+
+function mulaiFetch(job) {
+  if (ttsInFlight >= 2) {
+    ttsWaiting.push(job);
+    return;
+  }
+  ttsInFlight++;
+  job.audio = fetchSpeechAudio(job.text).finally(() => {
+    ttsInFlight--;
+    const next = ttsWaiting.shift();
+    if (next) mulaiFetch(next);
+  });
+}
+
 function enqueueSpeech(text) {
   const t = speakable(text);
   if (!t || !S.speakReply) return;
-  speechQueue++;
-  const gen = speechGen;
-  speakChain = speakChain
-    .then(() => {
-      if (gen !== speechGen) return; // sudah dipotong, jangan diucapkan
-      return speakOne(t);
-    })
-    .catch(() => {});
+  const job = { gen: speechGen, text: t, audio: null };
+  speechJobs.push(job);
+  mulaiFetch(job);
+  drainSpeech();
+}
+
+async function fetchSpeechAudio(text) {
+  if (S.ttsMode !== "browser") {
+    try {
+      const t0 = performance.now();
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text, voice: S.voice, rate: S.tempo }),
+      });
+      if (!res.ok) {
+        const why = (await res.text().catch(() => "")).slice(0, 120);
+        throw new Error("server " + res.status + (why ? " · " + why : ""));
+      }
+      const blob = await res.blob();
+      if (blob.size < 800) throw new Error("audio kosong (" + blob.size + " byte)");
+      diag("tts", "siap " + blob.size + " byte · " + Math.round(performance.now() - t0) + "ms");
+      return { blob };
+    } catch (e) {
+      diag("tts", "server gagal: " + e.message);
+      if (S.ttsMode === "server" || !S.browserFallback) throw e;
+    }
+  }
+  return { browser: true };
+}
+
+async function drainSpeech() {
+  if (draining) return;
+  draining = true;
+  setState("speaking");
+  try {
+    while (speechJobs.length) {
+      const item = speechJobs.shift();
+      if (item.gen !== speechGen) continue;
+      if (!item.audio) mulaiFetch(item);
+      try {
+        const out = await item.audio;
+        if (item.gen !== speechGen) continue;
+        if (out && out.blob) await playBlob(out.blob);
+        else await speakBrowser(item.text);
+      } catch (e) {
+        diag("tts", "gagal diputar: " + e.message);
+        setStatus("No audio — check Settings → Diagnostics");
+      }
+    }
+  } finally {
+    draining = false;
+    if (!speechJobs.length) {
+      S.speaking = false;
+      S.lastSpoken = speakable(S.replyText || "");
+      setState(S.autoListen ? "listening" : "idle");
+      if (S.autoListen) scheduleListen();
+    }
+  }
+}
+
+function adaUcapan() {
+  return draining || speechJobs.length > 0;
 }
 
 /* deteksi kalau yang ditangkap mic sebenarnya suara Kosmate sendiri */
@@ -171,55 +244,12 @@ function speakBrowser(text) {
   });
 }
 
-async function speakOne(text) {
-  setState("speaking");
-  try {
-    if (S.ttsMode !== "browser") {
-      try {
-        const t0 = performance.now();
-        const res = await fetch("/api/tts", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ text, voice: S.voice, rate: S.tempo }),
-        });
-        if (!res.ok) throw new Error("server " + res.status);
-        const blob = await res.blob();
-        if (blob.size < 800) throw new Error("audio kosong (" + blob.size + " byte)");
-        await playBlob(blob);
-        diag("tts", "server OK · " + blob.size + " byte · " + Math.round(performance.now() - t0) + "ms");
-        return;
-      } catch (e) {
-        diag("tts", "server gagal: " + e.message);
-        if (S.ttsMode === "server") throw e;
-        if (!S.browserFallback) {
-          throw new Error(e.message + " (cadangan suara HP dimatikan biar suara gak ganti)");
-        }
-      }
-    }
-    // cadangan: suara bawaan HP
-    await speakBrowser(text);
-    diag("tts", "pakai suara bawaan browser (offline)");
-  } catch (e) {
-    diag("tts", "SEMUA jalur suara gagal: " + e.message);
-    setStatus("suara gak keluar — buka ⚙ → Diagnostik");
-  } finally {
-    speechQueue = Math.max(0, speechQueue - 1);
-    if (speechQueue === 0) {
-      // seluruh jawaban sudah selesai diucapkan -> baru boleh dengar lagi
-      S.speaking = false;
-      S.lastSpoken = speakable(S.replyText || "");
-      setState(S.autoListen ? "listening" : "idle");
-      if (S.autoListen) scheduleListen();
-    }
-  }
-}
-
 /* jeda sebelum mic nyala lagi: kasih waktu gema speaker hilang */
 function scheduleListen() {
   clearTimeout(S.listenTimer);
   const wait = Math.max(200, Number(S.cooldownMs) || 900);
   S.listenTimer = setTimeout(() => {
-    if (!S.autoListen || S.speaking || S.busy || speechQueue > 0) return;
+    if (!S.autoListen || S.speaking || S.busy || adaUcapan()) return;
     startListening(true);
   }, wait);
 }
@@ -233,8 +263,7 @@ function stopSpeaking() {
   if ("speechSynthesis" in window) {
     try { window.speechSynthesis.cancel(); } catch (e) {}
   }
-  speechQueue = 0;
-  speakChain = Promise.resolve();
+  speechJobs = [];
   S.speaking = false;
   currentAudio = null;
   setState("idle");
@@ -277,7 +306,7 @@ function boundaryIndex(t, from = 0) {
 
 function takeChunk(buf, flush) {
   if (flush) return { take: buf, rest: "" };
-  const min = Number(S.chunkChars) || 420;
+  const min = Number(S.chunkChars) || 3000;
   if (buf.length < min) return { take: "", rest: buf };
   // cari batas kalimat terakhir di 60% terakhir buffer
   let cut = -1;
@@ -354,9 +383,9 @@ async function sendMessage(text) {
           const sisa = takeChunk(S.replyBuf || "", true).take;
           if (sisa && sisa.trim().length >= 3) enqueueSpeech(sisa);
           S.replyBuf = "";
-          if (evt.memory) $("memCount").textContent = evt.memory.facts + " fakta";
+          if (evt.memory) $("memCount").textContent = evt.memory.facts + " facts";
           if (evt.truncated) {
-            setStatus("jawaban kena batas token — naikin <code>LLM_MAX_TOKENS</code> di .env");
+            setStatus("Reply hit the token limit — raise <code>LLM_MAX_TOKENS</code> in .env");
             diag("stt", "jawaban truncated: finish_reason=length");
           }
         }
@@ -368,10 +397,13 @@ async function sendMessage(text) {
     enqueueSpeech("Koneksi ke otak gue putus. Cek server-nya ya.");
   } finally {
     S.busy = false;
-    speakChain.then(() => {
+    // tunggu antrean suara kosong dulu, baru mic nyala lagi
+    const tunggu = setInterval(() => {
+      if (adaUcapan()) return;
+      clearInterval(tunggu);
       if (!S.speaking) setState(S.listening ? "listening" : "idle");
       if (S.autoListen) startListening(true);
-    });
+    }, 250);
   }
 }
 
@@ -407,7 +439,7 @@ function initRecognition() {
     S.recErrors = (S.recErrors || 0) + 1;
     diag("stt", "error: " + err + " (ke-" + S.recErrors + ")");
     if (err === "not-allowed" || err === "service-not-allowed") {
-      setStatus("izin mic ditolak. Chrome → Site settings → Microphone → izinkan 127.0.0.1");
+      setStatus("Microphone blocked. Chrome → Site settings → Microphone → allow 127.0.0.1");
       S.autoListen = false;
       syncToggles();
     } else if (err === "no-speech" || err === "aborted") {
@@ -415,7 +447,7 @@ function initRecognition() {
     } else if (err === "network") {
       setStatus("STT butuh internet — cek koneksi");
     } else if (err === "audio-capture") {
-      setStatus("mic dipakai app lain? tutup app yang pakai mic");
+      setStatus("Microphone busy? Close the app using it");
     }
   };
   rec.onend = () => {
@@ -444,7 +476,7 @@ function initRecognition() {
 
 /* nyalain lagi pendengar otomatis dengan jeda yang makin panjang kalau error */
 function armListening() {
-  if (!S.rec || S.speaking || S.busy || S.listening || speechQueue > 0) return;
+  if (!S.rec || S.speaking || S.busy || S.listening || adaUcapan()) return;
   scheduleListen();
 }
 
@@ -452,7 +484,7 @@ function armListening() {
 function heartbeat() {
   if (!S.autoListen || !S.rec) return;
   if (S.listening || S.speaking || S.busy) return;
-  if (speechQueue > 0) return; // masih ada kalimat yang belum selesai diucapkan
+  if (adaUcapan()) return; // masih ada kalimat yang belum selesai diucapkan
   if (S.state === "listening") return;
   diag("stt", "heartbeat: pendengar mati, dinyalakan ulang");
   startListening(true);
@@ -460,7 +492,7 @@ function heartbeat() {
 
 function startListening(auto) {
   if (!S.rec) {
-    setStatus("browser ini gak dukung STT — buka di Chrome (bukan Fully Kiosk)");
+    setStatus("This browser has no speech recognition — open in Chrome");
     return;
   }
   if (S.speaking || S.listening) return;
@@ -497,18 +529,18 @@ async function startMediaRec() {
         const r = await fetch("/api/stt", { method: "POST", body: fd });
         const j = await r.json();
         if (j.text) sendMessage(j.text);
-        else { setState("idle"); setStatus("gak kedengeran, coba lagi"); }
+        else { setState("idle"); setStatus("Didn't catch that, try again"); }
       } catch (e) {
         setState("idle");
-        setStatus("gagal transkripsi: " + e.message);
+        setStatus("Transcription failed: " + e.message);
       }
     };
     S.mediaRec = mr;
     mr.start();
     setState("listening");
-    setStatus("ngerekam… ketuk mic lagi buat kirim");
+    setStatus("Recording… tap mic again to send");
   } catch (e) {
-    setStatus("mic gak bisa diakses: " + e.message);
+    setStatus("Mic unavailable: " + e.message);
   }
 }
 function pickMime() {
@@ -521,9 +553,9 @@ function pickMime() {
 function bind() {
   $("orb").onclick = () => {
     unlockAudio();
-    if (S.speaking || speechQueue > 0) {
+    if (S.speaking || adaUcapan()) {
       stopSpeaking();
-      setStatus("dipotong. ketuk lagi kalau mau ngomong");
+      setStatus("Stopped. Tap again to talk");
       return;
     }
     if (S.listening) stopRecognition(false);
@@ -562,7 +594,7 @@ function bind() {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ mode: b.dataset.mode }),
       });
-      setStatus("mode <strong>" + b.dataset.mode + "</strong> aktif");
+      setStatus("Mode: <strong>" + b.dataset.mode + "</strong>");
     };
   });
 
@@ -586,9 +618,9 @@ function bind() {
     syncToggles();
     if (S.autoListen) {
       unlockAudio();
-      diag("stt", "auto-dengerin dinyalakan");
+      diag("stt", "auto listen enabled");
       if (!S.rec) {
-        setStatus("auto-dengerin butuh Chrome (browser ini gak punya STT)");
+        setStatus("Auto listen needs Chrome (no speech recognition here)");
       } else {
         startListening(true);
       }
@@ -631,7 +663,7 @@ function bind() {
   $("setSilence").onchange = (e) => {
     const n = Math.max(300, Math.min(60000, parseInt(e.target.value || "900", 10) || 900));
     S.silenceMs = n; e.target.value = String(n); saveSettings();
-    setStatus("jeda dengerin: <strong>" + n + " ms</strong> (" + (n / 1000).toFixed(1) + " detik)");
+    setStatus("Silence wait: <strong>" + n + " ms</strong> (" + (n / 1000).toFixed(1) + "s)");
   };
 
   document.addEventListener("visibilitychange", async () => {
@@ -681,11 +713,11 @@ async function loadVoices() {
       sel.value = j.active.key;
       S.voiceKey = j.active.key;
       $("voiceNote").innerHTML = j.fish_key
-        ? "Fish Audio siap. Pilih salah satu — kalau Fish gagal, Kosmate <b>diam</b>, tidak ganti suara lain."
-        : "FISH_API_KEY belum diisi di .env — voice Fish belum bisa dipakai. Isi dulu, lalu muat ulang halaman.";
+        ? "Fish Audio ready. Pick one — if it fails, it stays <b>silent</b> instead of switching voice."
+        : "FISH_API_KEY is missing in .env — Fish voices are unavailable. Add it, then reload.";
     }
   } catch (e) {
-    diag("tts", "gagal muat daftar suara: " + e.message);
+    diag("tts", "voice list failed: " + e.message);
   }
 }
 
@@ -704,11 +736,11 @@ async function pilihVoice(key) {
     saveSettings();
     syncToggles();
     diag("tts", "voice diganti: " + j.active.key + " (" + j.active.rate + ")");
-    setStatus("suara: <strong>" + j.active.label + "</strong> · " + j.active.rate);
+    setStatus("Voice: <strong>" + j.active.label + "</strong> · " + j.active.rate);
     await runTtsTest();
   } catch (e) {
     diag("tts", "gagal ganti voice: " + e.message);
-    setStatus("gagal ganti suara: " + e.message);
+    setStatus("Could not change voice: " + e.message);
   }
 }
 
@@ -717,7 +749,7 @@ async function testMic() {
   try {
     const st = await navigator.mediaDevices.getUserMedia({ audio: true });
     st.getTracks().forEach((t) => t.stop());
-    diag("mic", "akses OK");
+    diag("mic", "access OK");
   } catch (e) {
     diag("mic", "GAGAL: " + (e.name || e.message));
   }
@@ -764,15 +796,15 @@ function renderDiag() {
     ? (window.speechSynthesis.getVoices() || []).find((v) => /^id/i.test(v.lang))
     : null;
   const rows = [
-    ["Suara dipakai", (S.serverInfo && S.serverInfo.engine ? S.serverInfo.engine : "belum tahu") + " · tempo " + ((S.serverInfo && S.serverInfo.rate) || "-20%"), true],
-    ["Cadangan suara HP", S.browserFallback ? "aktif (bisa ganti timbre kalau server gagal)" : "mati (suara tetap satu)", true],
-    ["STT (Web Speech)", hasSR ? "ada" : "TIDAK ADA → pakai Chrome, bukan Fully Kiosk", hasSR],
-    ["TTS server", S.diag.tts || "belum dites", !!S.diag.tts && !/GAGAL|gagal/i.test(S.diag.tts)],
-    ["TTS browser", hasSS ? "ada · " + nVoices + " suara" + (idVoice ? " · " + idVoice.name : " · (voice id-ID gak ketemu)") : "TIDAK ADA", hasSS],
-    ["Bicara otomatis", S.speakReply ? "aktif" : "nonaktif", S.speakReply],
-    ["Dengerin otomatis", S.autoListen ? "aktif" : "nonaktif", S.autoListen],
-    ["Log terakhir STT", S.diag.stt || "-", !!S.diag.stt && !/error|gagal/i.test(S.diag.stt)],
-    ["Mic (tes manual)", S.diag.mic || "belum dites", S.diag.mic === "akses OK"],
+    ["Voice", (S.serverInfo && S.serverInfo.engine ? S.serverInfo.engine : "unknown") + " · speed " + ((S.serverInfo && S.serverInfo.rate) || "-20%"), true],
+    ["Device fallback", S.browserFallback ? "on (timbre may change if the server fails)" : "off (single voice)", true],
+    ["Speech recognition", hasSR ? "available" : "MISSING — use Chrome, not a WebView", hasSR],
+    ["TTS server", S.diag.tts || "not tested", !!S.diag.tts && !/GAGAL|gagal/i.test(S.diag.tts)],
+    ["TTS browser", hasSS ? "available · " + nVoices + " voices" + (idVoice ? " · " + idVoice.name : " · (no Indonesian voice)") : "MISSING", hasSS],
+    ["Speak replies", S.speakReply ? "on" : "off", S.speakReply],
+    ["Auto listen", S.autoListen ? "on" : "off", S.autoListen],
+    ["Last speech log", S.diag.stt || "-", !!S.diag.stt && !/error|gagal/i.test(S.diag.stt)],
+    ["Mic test", S.diag.mic || "not tested", S.diag.mic === "access OK"],
   ];
   box.innerHTML = rows
     .map((r) => {
@@ -797,7 +829,7 @@ async function openSheet(tab) {
   main.classList.add("open");
   if (tab === "memory") {
     $("sheetTitle").textContent = "Memori Kosmate";
-    $("sheetHint").textContent = "Fakta yang Kosmate ingat tentang kamu. Hapus yang salah — dia langsung lupa.";
+    $("sheetHint").textContent = "Facts remembered about you. Delete a wrong one and it forgets immediately.";
     await loadFacts();
   } else {
     $("sheetTitle").textContent = "Pengaturan";
@@ -812,7 +844,7 @@ async function loadFacts() {
     const r = await fetch("/api/memory/facts?limit=40");
     const j = await r.json();
     const facts = j.facts || [];
-    $("memStats").textContent = facts.length + " fakta";
+    $("memStats").textContent = facts.length + " facts";
     if (!facts.length) {
       wrap.innerHTML = "";
       $("factHint").style.display = "block";
@@ -834,7 +866,7 @@ async function loadFacts() {
       wrap.appendChild(d);
     });
   } catch (e) {
-    wrap.innerHTML = '<div class="tiny">gagal memuat memori</div>';
+    wrap.innerHTML = '<div class="tiny">Could not load memory</div>';
   }
 }
 
@@ -859,7 +891,7 @@ async function boot() {
   bind();
   S.rec = initRecognition();
   if (!S.rec) {
-    $("micBtn").title = "rekam lalu kirim (STT server)";
+    $("micBtn").title = "record and send (server STT)";
     diag("stt", "browser ini gak punya SpeechRecognition (Fully Kiosk/WebView?)");
   }
   if ("speechSynthesis" in window) {
@@ -869,11 +901,10 @@ async function boot() {
   setInterval(heartbeat, 3000);
   try {
     const h = await (await fetch("/api/health")).json();
-    $("brandName").textContent = h.name || "Kosmate";
     $("healthDot").className = "dot " + (h.llm_key ? "ok" : "err");
-    $("memCount").textContent = (h.memory ? h.memory.facts : 0) + " fakta";
-    const engine = h.voice ? h.voice.label : (h.fish_key ? "Fish" : "edge · Gadis");
-    $("brandSub").textContent = engine;
+    $("memCount").textContent = (h.memory ? h.memory.facts : 0) + " facts";
+    const engine = h.voice ? h.voice.label : (h.fish_key ? "Fish" : "edge");
+    if ($("brandSub")) $("brandSub").textContent = engine;
     S.serverInfo = { voice: h.tts_voice, rate: h.tts_rate, strict: h.tts_strict, fish: h.fish_key, ref: h.fish_ref, engine, active: h.voice };
     await loadVoices();
     // kalau voice aktif berbasis Fish, matikan cadangan suara HP biar timbre gak ganti
@@ -881,7 +912,7 @@ async function boot() {
       S.browserFallback = false;
       syncToggles();
     }
-    setStatus(h.llm_key ? "ketuk orb buat mulai ngobrol" : "isi API key dulu di file .env");
+    setStatus(h.llm_key ? "Tap to talk" : "Add your API key in .env first");
   } catch (e) {
     $("healthDot").className = "dot err";
     setStatus("server gak nyahut");
