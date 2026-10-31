@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+data/kosmate.db
+data/kosmate.db-wal
+data/kosmate.db-shm
+data/cache/
+data/*.mp3
+data/*.ogg
+
+.kosmate-runtime
+data/boot.log
+data/*.log
+*.zip
+node_modules/

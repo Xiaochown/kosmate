@@ -1,0 +1,10 @@
+# Kosmate :: dependency inti
+# SENGAJA tanpa FastAPI/pydantic: pydantic-core ditulis Rust dan belum ada
+# wheel aarch64-android untuk Python 3.14 -> gagal dikompilasi di Termux.
+starlette>=0.37
+uvicorn>=0.27
+httpx>=0.27
+python-multipart>=0.0.9
+
+# opsional (kalau gagal dikompilasi, pakai Fish Audio):
+# edge-tts>=6.1.9

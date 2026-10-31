@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kosmate — Tutor Pasang dari Nol (Poco X3 NFC)</title>
+<style>
+  :root{
+    --bg:#0b0d10; --surface:#15171b; --surface-2:#1b1e24; --border:#2a2e35;
+    --text:#eceef2; --muted:#9aa2ad; --dim:#646c78;
+    --accent:#5e6ad2; --accent-soft:#8b95e8; --ok:#3ecf8e; --warn:#e0a458; --danger:#e5484d;
+    --mono:ui-monospace,SFMono-Regular,"JetBrains Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font:15px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;padding-bottom:80px;
+  }
+  .bar{
+    position:sticky;top:0;z-index:20;background:#0b0d10ee;backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);padding:10px 16px;
+  }
+  .bar-in{max-width:780px;margin:0 auto;display:flex;align-items:center;gap:12px}
+  .bar-t{font:11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+  .track{flex:1;height:4px;background:#1e222a;border-radius:99px;overflow:hidden}
+  .fill{height:100%;width:0;background:linear-gradient(90deg,#4c56c9,#8b95e8);transition:width .3s ease}
+  .pct{font:11px/1 var(--mono);color:var(--muted);min-width:34px;text-align:right}
+  .wrap{max-width:780px;margin:0 auto;padding:26px 16px 0}
+  .kicker{font:11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:14px}
+  .kicker b{color:var(--accent-soft);font-weight:500}
+  h1{font-size:clamp(23px,5.6vw,32px);line-height:1.18;letter-spacing:-.02em;margin:0 0 12px;font-weight:600}
+  .lede{color:var(--muted);font-size:15px;margin:0 0 18px}
+  .facts{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px}
+  .tag{font:11px/1 var(--mono);color:var(--muted);border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:7px 11px}
+  .tag.ok{color:var(--ok);border-color:#245c44;background:#10231b}
+  section{padding:26px 0;border-bottom:1px solid #1c2026}
+  section:last-of-type{border-bottom:none}
+  .num{font:11px/1 var(--mono);color:var(--accent-soft);letter-spacing:.14em;display:block;margin-bottom:9px}
+  h2{font-size:19px;letter-spacing:-.01em;margin:0 0 6px;font-weight:600}
+  .sub{color:var(--dim);font-size:13.5px;margin:0 0 16px}
+  h3{font-size:14px;margin:22px 0 8px;font-weight:600;color:#f2f4f8}
+  p{margin:0 0 13px;color:#cfd4dc;font-size:14.5px}
+  strong{color:#fff;font-weight:600}
+  em{color:#dfe3ea;font-style:normal;background:#1b2030;padding:1px 5px;border-radius:4px;font-size:13.5px}
+  code{font:12.5px/1.5 var(--mono);background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1.5px 5px;color:#d8dcf0}
+  .code{position:relative;margin:0 0 14px}
+  pre{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 15px;overflow-x:auto;margin:0;font:12.5px/1.75 var(--mono);color:#c8cdd8}
+  pre .c{color:var(--dim)}
+  pre .hi{color:var(--accent-soft)}
+  .copy{
+    position:absolute;top:8px;right:8px;background:#22262e;border:1px solid #333944;color:var(--muted);
+    font:10px/1 var(--mono);padding:6px 9px;border-radius:6px;cursor:pointer;letter-spacing:.06em;
+  }
+  .copy:active{background:#2c3240;color:#fff}
+  .exp{
+    border-left:2px solid #2f3a52;background:#101319;border-radius:0 8px 8px 0;
+    padding:10px 13px;margin:0 0 14px;font:12px/1.7 var(--mono);color:#8f97a6;white-space:pre-wrap;
+  }
+  .exp b{color:var(--ok);font-weight:600;font-family:var(--mono)}
+  .note{border:1px solid #3a3320;background:#191510;border-radius:8px;padding:12px 14px;margin:0 0 14px}
+  .note p{margin:0;font-size:13.5px;color:#e3c99b}
+  .note.good{border-color:#1f4a37;background:#0f1a15}
+  .note.good p{color:#a8dfc4}
+  .step{display:flex;gap:12px;align-items:flex-start;margin:0 0 10px}
+  .step input{
+    appearance:none;-webkit-appearance:none;width:22px;height:22px;flex:0 0 22px;margin:1px 0 0;
+    border:1.5px solid #3a4049;border-radius:6px;cursor:pointer;position:relative;background:#14171c;
+  }
+  .step input:checked{background:#3ecf8e;border-color:#3ecf8e}
+  .step input:checked::after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;color:#0b0d10;font-size:15px;font-weight:700}
+  .step .body{flex:1;min-width:0}
+  .step .body p{margin:0 0 8px}
+  .step input:checked + .body{opacity:.55}
+  details{border:1px solid var(--border);border-radius:9px;background:var(--surface);margin:0 0 9px;overflow:hidden}
+  details summary{
+    padding:12px 14px;cursor:pointer;font-size:13.5px;font-weight:500;list-style:none;
+    display:flex;gap:9px;align-items:flex-start;
+  }
+  details summary::-webkit-details-marker{display:none}
+  details summary::before{content:"▸";color:var(--dim);transition:transform .15s;display:inline-block;flex:0 0 auto}
+  details[open] summary::before{transform:rotate(90deg)}
+  details[open] summary{border-bottom:1px solid #1e222a}
+  details .inner{padding:12px 14px}
+  details .inner p:last-child,details .inner .code:last-child{margin-bottom:0}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+  .chip{font:11px/1 var(--mono);color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:6px 10px;background:var(--surface-2)}
+  footer{color:var(--dim);font:11.5px/1.9 var(--mono);padding:26px 0 0;border-top:1px solid #1c2026;margin-top:8px}
+  @media(min-width:700px){ .wrap{padding:34px 24px 0} }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="bar-in">
+    <span class="bar-t">progress</span>
+    <div class="track"><div class="fill" id="fill"></div></div>
+    <span class="pct" id="pct">0%</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="kicker"><b>TUTOR</b> · KOSMATE · DARI NOL SAMPAI NGOBROL</div>
+  <h1>Pasang AI teman kos di Poco X3 NFC</h1>
+  <p class="lede">Ikuti berurutan. Tiap langkah ada perintahnya, dan ada contoh <strong>output yang benar</strong> — kalau beda, langsung ke bagian 10. Total waktu santai ±40 menit.</p>
+  <div class="facts">
+    <span class="tag ok">● 12 bagian</span>
+    <span class="tag">tanpa root</span>
+    <span class="tag">tanpa VPS</span>
+    <span class="tag">biaya Rp0</span>
+    <span class="tag">progress kesimpan otomatis</span>
+  </div>
+
+  <div class="note good" style="margin-top:18px">
+    <p><strong>Males ngikutin 12 bagian?</strong> Ada installer otomatis yang ngerjain semuanya
+    (benerin pip, install dependency, tulis .env, tes otak &amp; suara, nyalain server, set autostart + sshd).
+    Cukup satu baris, lalu tempel API key sekali saat ditanya:</p>
+  </div>
+  <div class="code"><pre>unzip -o /sdcard/Download/kosmate/kosmate.zip -d ~/ && bash ~/kosmate/scripts/autoinstall.sh</pre><button class="copy">copy</button></div>
+  <p style="font-size:13.5px;color:#8b93a1">Sisanya tetap berguna kalau lu mau ngerti bagian dalamnya, atau kalau nanti ada yang perlu dibenerin manual.</p>
+
+  <!-- 00 -->
+  <section id="s0">
+    <span class="num">00 — SEBELUM MULAI</span>
+    <h2>Yang harus ada di meja lu</h2>
+    <p class="sub">Cek dulu, biar gak berhenti di tengah jalan.</p>
+    <div class="step"><input type="checkbox" data-k="s0a"><div class="body">
+      <p><strong>Poco X3 NFC</strong> yang ada WiFi-nya, plus <strong>charger</strong>.</p>
+    </div></div>
+    <div class="step"><input type="checkbox" data-k="s0b"><div class="body">
+      <p><strong>API key LLM</strong> yang udah lu punya (yang biasa lu pakai buat ngoding). Formatnya biasanya <code>sk-...</code></p>
+    </div></div>
+    <div class="step"><input type="checkbox" data-k="s0c"><div class="body">
+      <p><strong>Speaker</strong> — ini opsional tapi paling ngaruh. Speaker aktif yang colok ke jack 3.5mm (±150rb). Tanpa ini dia tetap jalan, tapi suaranya dari speaker HP.</p>
+    </div></div>
+    <div class="step"><input type="checkbox" data-k="s0d"><div class="body">
+      <p>Waktu <strong>±40 menit</strong> dan HP gak buru-buru dipakai.</p>
+    </div></div>
+  </section>
+
+  <!-- 01 -->
+  <section id="s1">
+    <span class="num">01 — KENALAN 30 DETIK</span>
+    <h2>Apa yang sebenernya jalan di HP lu</h2>
+    <p class="sub">Biar pas error lu tahu bagian mana yang rusak.</p>
+    <p>Ada <strong>tiga bagian</strong>, semuanya di HP yang sama:</p>
+    <div class="chips">
+      <span class="chip">1. Termux = dapurnya</span>
+      <span class="chip">2. Python = otaknya</span>
+      <span class="chip">3. Chrome = mata, telinga, mulut</span>
+    </div>
+    <p><strong>Termux</strong> itu aplikasi yang ngasih lu terminal Linux di Android. <strong>Python</strong> jalan di dalamnya: nyimpen memori, nyusun prompt, manggil LLM, bikin suara. <strong>Chrome</strong> yang ngambil suara lu lewat mic, nampilin orb, dan muter suara balasannya.</p>
+    <div class="note"><p>Keduanya <strong>harus di HP yang sama</strong>. Kalau browser-nya di HP lain, Chrome bakal blokir mic — karena dianggap koneksi gak aman. Ini bukan bug, ini aturan browser.</p></div>
+  </section>
+
+  <!-- 02 -->
+  <section id="s2">
+    <span class="num">02 — APP DASAR</span>
+    <h2>Install 4 aplikasi</h2>
+    <p class="sub">Termux wajib dari F-Droid. Yang dari Play Store sudah usang dan paketnya bakal gagal.</p>
+
+    <div class="step"><input type="checkbox" data-k="s2a"><div class="body">
+      <p><strong>Buka Chrome</strong> → ketik <code>f-droid.org</code> → tap tombol <strong>Download F-Droid</strong> → buka file APK yang ke-download → kalau muncul peringatan, pilih <em>Settings</em> → izinkan <em>Install unknown apps</em> untuk Chrome → balik dan install.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s2b"><div class="body">
+      <p><strong>Buka F-Droid</strong> (ikonnya biru), tunggu daftar app muncul, lalu cari dan install tiga ini satu per satu:</p>
+      <div class="chips"><span class="chip">Termux</span><span class="chip">Termux:API</span><span class="chip">Termux:Boot</span></div>
+      <p>Kalau pencarian lambat, tap ikon <em>Search</em> di kanan atas dan ketik manual. Jangan ambil yang namanya “Termux (Google Play)” atau fork lain.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s2c"><div class="body">
+      <p><strong>Buka Termux sekali</strong>, tunggu sampai muncul prompt <code>~ $</code>. Kalau ada tulisan “Installing bootstrap” di awal, tungguin sampai selesai. Setelah itu tutup dulu.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s2d"><div class="body">
+      <p><strong>Matikan optimasi baterai</strong> buat Termux — ini yang bikin dia mati sendiri kalau layar mati:</p>
+      <p><em>Settings</em> (HP) → <em>Apps</em> → <em>Termux</em> → <em>Battery</em> → pilih <strong>Unrestricted</strong> / <em>No restrictions</em>. Di MIUI namanya bisa <em>Battery saver</em> → <em>No restrictions</em>.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s2e"><div class="body">
+      <p><strong>Buka Termux:Boot sekali</strong> (cuma perlu dibuka, gak ada yang diatur). Ini yang nanti bikin Kosmate nyala sendiri tiap HP restart.</p>
+    </div></div>
+
+    <div class="note good"><p>Kalau empat langkah ini beres, sisa semuanya cuma ngetik perintah di Termux. Gak ada yang perlu di-root.</p></div>
+  </section>
+
+  <!-- 03 -->
+  <section id="s3">
+    <span class="num">03 — MASUKIN FILE</span>
+    <h2>Pindahin project ke dalam Termux</h2>
+    <p class="sub">File zip-nya sudah ada di folder Download HP lu (gw kirim lewat chat).</p>
+
+    <div class="step"><input type="checkbox" data-k="s3a"><div class="body">
+      <p>Pastikan file <code>kosmate.zip</code> ada di <code>Download/kosmate/</code>. Cek lewat app Files HP.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s3b"><div class="body">
+      <p>Buka <strong>Termux</strong>, tempel perintah ini (tekan lama di layar → Paste):</p>
+      <div class="code"><pre>pkg update -y && pkg install -y unzip
+termux-setup-storage</pre><button class="copy">copy</button></div>
+      <p>Saat <code>termux-setup-storage</code> jalan, muncul popup izin → tap <strong>Allow</strong>.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s3c"><div class="body">
+      <p>Ekstrak ke home Termux, lalu masuk foldernya:</p>
+      <div class="code"><pre>unzip /sdcard/Download/kosmate/kosmate.zip -d ~/
+cd ~/kosmate
+ls</pre><button class="copy">copy</button></div>
+      <div class="exp"><b>harusnya keliatan:</b>
+README.md  docs  kos  requirements.txt  run.sh  scripts  web</div>
+      <p>Kalau <code>unzip: cannot find</code>, berarti nama foldernya beda. Cari dulu: <code>ls /sdcard/Download/</code></p>
+    </div></div>
+  </section>
+
+  <!-- 04 -->
+  <section id="s4">
+    <span class="num">04 — KREDENSIAL</span>
+    <h2>Siapin dua baris ini di catatan</h2>
+    <p class="sub">Nanti lu butuh pas bagian 06. Tulis dulu di Notes HP.</p>
+
+    <div class="step"><input type="checkbox" data-k="s4a"><div class="body">
+      <p><strong>API key LLM</strong> (punya lu). Kalau pakai TeamORouter, ini contoh lengkapnya:</p>
+      <div class="code"><pre><span class="c"># base url</span>
+https://api.teamorouter.com/v1
+<span class="c"># key (contoh bentuknya, punya lu beda)</span>
+sk-xxxxxxxxxxxxxxxxxxxxxxxx
+<span class="c"># model gratis yang paling pas buat ngobrol</span>
+deepseek-v4-flash-free</pre><button class="copy">copy</button></div>
+      <p>Model alternatif kalau yang itu lemot: <code>gemini-3.5-flash-lite</code>. Key bisa dari provider lain, asal OpenAI-compatible.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s4b"><div class="body">
+      <p><strong>Suara (TTS).</strong> Ada dua jalur, pilih salah satu:</p>
+      <p><strong>Jalur gratis tanpa daftar:</strong> <code>edge-tts</code>. Sudah otomatis keinstall di bagian 05. Suaranya lumayan, Indonesia, agak datar.</p>
+      <p><strong>Jalur lebih bagus (tetap Rp0):</strong> daftar di <code>fish.audio</code> → menu <em>API Keys</em> → bikin key <code>fk-...</code> → nanti di .env isi <code>TTS_PROVIDER=fish</code>, <code>FISH_API_KEY=...</code>, dan <code>FISH_MODEL=s2.1-pro-free</code> (model ini yang gratis; jangan <code>s2.1-pro</code>, itu $15/juta byte). Bonus: bisa kloning suara sendiri.</p>
+    </div></div>
+  </section>
+
+  <!-- 05 -->
+  <section id="s5">
+    <span class="num">05 — INSTALASI</span>
+    <h2>Satu perintah, jalan sendiri</h2>
+    <p class="sub">Yang dipasang: python, ffmpeg, uv, virtualenv, fastapi, httpx, edge-tts. Butuh koneksi internet.</p>
+
+    <div class="step"><input type="checkbox" data-k="s5a"><div class="body">
+      <div class="code"><pre>cd ~/kosmate
+bash scripts/install.sh</pre><button class="copy">copy</button></div>
+      <p>Butuh <strong>5–15 menit</strong> kalau HP baru pertama kali. Ini normal — sebagian paket dikompilasi di HP.</p>
+      <div class="exp"><b>ujungnya harus begini:</b>
+================================================
+ selesai. langkah berikutnya:
+  1. cp .env.example .env   lalu isi LLM_API_KEY
+  2. bash scripts/termux-start.sh
+  3. Chrome -> http://127.0.0.1:8080</div>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s5b"><div class="body">
+      <p>Kalau muncul tulisan <em>“edge-tts tetap gagal”</em> — jangan panik, itu cuma suara cadangan gagal dipasang. Lu tetap bisa lanjut; nanti di .env pakai Fish Audio untuk suara (bagian 06).</p>
+    </div></div>
+
+    <div class="note"><p><strong>Kalau sempat muncul error <code>bad interpreter: python3.13</code></strong> — itu pip lama yang nunjuk ke python yang sudah di-upgrade. Script versi baru otomatis benerin (lewat <code>ensurepip</code> / <code>python-pip</code>), jadi cukup jalankan ulang <code>bash scripts/install.sh</code>. Kalau tetap gagal: <code>python -m ensurepip --upgrade</code> lalu ulangi.</p></div>
+
+    <div class="note"><p><strong>Kenapa project ini TIDAK pakai FastAPI:</strong> pydantic (dependency FastAPI) butuh <code>pydantic-core</code> yang ditulis Rust, dan belum ada versi siap-pakai untuk Android aarch64 + Python 3.14. Hasilnya selalu <code>metadata-generation-failed</code> / <code>maturin</code> error. Server-nya pakai <strong>Starlette</strong> yang murni Python — semua fitur yang dipakai (routing, streaming, upload, static file) sudah ada di sana.</p></div>
+
+    <div class="step"><input type="checkbox" data-k="s5c"><div class="body">
+      <p>Cek hasil instalasi:</p>
+      <div class="code"><pre>bash scripts/termux-diag.sh</pre><button class="copy">copy</button></div>
+      <p>Yang penting baris <code>import fastapi</code> dan <code>import uvicorn</code> harus <b>[ok]</b>. Sisanya boleh belum.</p>
+    </div></div>
+  </section>
+
+  <!-- 06 -->
+  <section id="s6">
+    <span class="num">06 — KONFIGURASI</span>
+    <h2>Isi .env (bagian paling gampang salah)</h2>
+    <p class="sub">Empat baris wajib. Tanpa spasi sebelum/sesudah tanda =.</p>
+
+    <div class="step"><input type="checkbox" data-k="s6a"><div class="body">
+      <div class="code"><pre>cd ~/kosmate
+cp .env.example .env
+nano .env</pre><button class="copy">copy</button></div>
+      <p><code>nano</code> itu editor teks di dalam Termux. Panah keyboard HP gak jalan — geser kursor dengan tap di baris yang mau diedit.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s6b"><div class="body">
+      <p>Isi minimal empat baris ini (contoh pakai TeamORouter):</p>
+      <div class="code"><pre>LLM_BASE_URL=https://api.teamorouter.com/v1
+LLM_API_KEY=sk-punyalu-disini
+LLM_MODEL=deepseek-v4-flash-free
+LLM_MODEL_FALLBACK=gemini-3.5-flash-lite</pre><button class="copy">copy</button></div>
+      <p>Kalau pakai Fish Audio, tambahkan:</p>
+      <div class="code"><pre>TTS_PROVIDER=fish
+FISH_API_KEY=fk-punyalu-disini
+FISH_MODEL=s2.1-pro-free
+FISH_REFERENCE_ID=</pre><button class="copy">copy</button></div>
+      <p><code>FISH_REFERENCE_ID</code> boleh kosong dulu — suara default tetap keluar. Nanti diisi ID suara favorit lu dari fish.audio.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s6c"><div class="body">
+      <p><strong>Simpan &amp; keluar dari nano:</strong> tekan <code>CTRL</code> di toolbar Termux (ada tombol kecil di atas keyboard) lalu <code>O</code> → <code>Enter</code> → lalu <code>CTRL</code> + <code>X</code>.</p>
+      <p>Kalau toolbar CTRL gak ketemu: tombol volume-down + <code>O</code> berfungsi sebagai Ctrl+O di Termux.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s6d"><div class="body">
+      <p>Verifikasi tanpa nampilin key-nya:</p>
+      <div class="code"><pre>grep -E '^(LLM_MODEL|TTS_PROVIDER)=' .env
+grep -c '^LLM_API_KEY=sk-' .env</pre><button class="copy">copy</button></div>
+      <div class="exp"><b>harusnya:</b>
+LLM_MODEL=deepseek-v4-flash-free
+TTS_PROVIDER=auto
+<b>1</b></div>
+      <p>Kalau hasil terakhir <code>0</code>, berarti key belum kesimpen atau formatnya bukan <code>sk-</code>. Ulangi 06a.</p>
+    </div></div>
+  </section>
+
+  <!-- 07 -->
+  <section id="s7">
+    <span class="num">07 — NYALAIN</span>
+    <h2>Tes pertama: dia harus nyapa lu</h2>
+    <p class="sub">Kalau bagian ini lolos, 90% pekerjaan selesai.</p>
+
+    <div class="step"><input type="checkbox" data-k="s7a"><div class="body">
+      <div class="code"><pre>cd ~/kosmate
+bash scripts/termux-start.sh</pre><button class="copy">copy</button></div>
+      <p>Script ini ngunci biar Android gak bunuh Termux, terus buka Chrome otomatis ke <code>127.0.0.1:8080</code>. Kalau Chrome gak kebuka sendiri, buka manual.</p>
+      <div class="exp"><b>di Termux harusnya:</b>
+[kosmate] wake lock aktif
+Kosmate jalan di http://0.0.0.0:8080
+INFO: Application startup complete.</div>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s7b"><div class="body">
+      <p><strong>Jangan tutup Termux.</strong> Pindah ke Chrome (pakai recent apps, jangan back dari Termux — back bisa matiin prosesnya).</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s7c"><div class="body">
+      <p>Di Chrome: <code>http://127.0.0.1:8080</code> → muncul layar orb gelap + judul <strong>Kai</strong>. Kalau ada popup minta mikrofon → tap <strong>Allow</strong>.</p>
+      <div class="exp"><b>cek cepat kalau layar aneh:</b>
+http://127.0.0.1:8080/api/health
+harusnya:
+{"ok":true,"name":"Kai","llm":"deepseek-v4-flash-free","llm_key":true,...}</div>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s7d"><div class="body">
+      <p><strong>Tap layar sekali</strong> (buat buka izin audio otomatis — Chrome gak boleh bunyi tanpa disentuh), lalu <strong>ketuk orb</strong> dan bilang: <em>“halo Kai, kenalin gue Faa”</em>.</p>
+      <p>Yang bakal lu lihat berurutan: tulisan <strong>“gue dengerin…”</strong> → transkrip muncul → <strong>“mikir…”</strong> → orb ungu → suara.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s7e"><div class="body">
+      <p>Tes memori: bilang <em>“inget ya, gue alergi kacang”</em>. Tutup Chrome, buka lagi, tanya <em>“gue alergi apa?”</em>. Kalau dia jawab <strong>kacang</strong> — memori jalan.</p>
+    </div></div>
+
+    <div class="note good"><p>Kalau sampai sini sukses: lu udah punya asisten suara yang punya ingatan. Sisanya cuma bikin dia nyala sendiri dan nyaman dipakai.</p></div>
+  </section>
+
+  <!-- 08 -->
+  <section id="s8">
+    <span class="num">08 — OTOMATIS</span>
+    <h2>Biar nyala sendiri tiap HP restart</h2>
+    <p class="sub">Dua bagian: Termux autostart, dan browser fullscreen.</p>
+
+    <h3>A. Termux:Boot</h3>
+    <div class="step"><input type="checkbox" data-k="s8a"><div class="body">
+      <div class="code"><pre>mkdir -p ~/.termux/boot
+cp ~/kosmate/scripts/termux-boot.sh ~/.termux/boot/10-kosmate.sh
+chmod +x ~/.termux/boot/10-kosmate.sh
+ls ~/.termux/boot/</pre><button class="copy">copy</button></div>
+      <div class="exp"><b>harusnya:</b>10-kosmate.sh</div>
+    </div></div>
+
+    <h3>B. Fully Kiosk Browser</h3>
+    <div class="step"><input type="checkbox" data-k="s8b"><div class="body">
+      <p>Install <strong>Fully Kiosk Browser</strong> dari Play Store (versi gratis cukup). Ini bikin Chrome-nya fullscreen, layar gak mati, dan auto-restart kalau crash.</p>
+    </div></div>
+    <div class="step"><input type="checkbox" data-k="s8c"><div class="body">
+      <p>Buka app → <em>Settings</em> → <em>Web Content Settings</em> → <strong>Start URL</strong> = <code>http://127.0.0.1:8080</code></p>
+      <p>Lalu nyalakan: <em>Web Auto Reload on Idle</em>, <em>Restart App on Crash</em>.</p>
+    </div></div>
+    <div class="step"><input type="checkbox" data-k="s8d"><div class="body">
+      <p><em>Settings</em> → <em>Device Management</em> → nyalakan <strong>Keep Screen On</strong>, <strong>Launch on Boot</strong>, <strong>Prevent Sleep</strong>.</p>
+      <p>Balik ke <em>Settings</em> → <em>Permissions</em> → izinkan <strong>Microphone</strong> (wajib, kalau nggak dia bisu).</p>
+    </div></div>
+    <div class="step"><input type="checkbox" data-k="s8e"><div class="body">
+      <p>Matikan optimasi baterai buat <strong>Fully Kiosk</strong> juga (Settings HP → Apps → Fully Kiosk → Battery → Unrestricted).</p>
+    </div></div>
+    <div class="step"><input type="checkbox" data-k="s8f"><div class="body">
+      <p><strong>Tes:</strong> restart HP. Tunggu ±1 menit. Kosmate harusnya muncul sendiri dan nyapa lu sesuai jam.</p>
+    </div></div>
+  </section>
+
+  <!-- 09 -->
+  <section id="s9">
+    <span class="num">09 — PAKAI SEHARI-HARI</span>
+    <h2>Cara ngobrol sama dia</h2>
+    <p class="sub">Tiga tombol yang perlu lu hafal.</p>
+
+    <div class="step"><input type="checkbox" data-k="s9a"><div class="body">
+      <p><strong>Mode</strong> (chip di atas orb): <code>temen</code> buat ngobrol &amp; curhat, <code>tutor</code> buat belajar (dia jelasin terus nanya balik), <code>kerja</code> buat tugas &amp; deadline.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s9b"><div class="body">
+      <p><strong>Tombol memori</strong> (kiri atas, tulisan <em>n fakta</em>): lihat semua yang dia inget. Tap <code>×</code> buat hapus fakta yang salah — dia langsung lupa.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s9c"><div class="body">
+      <p><strong>Gear ⚙</strong>: ganti suara, nyalain <em>dengerin otomatis</em> (biar gak perlu ketuk orb terus), atur jeda dengerin (900 ms default — turunin ke 600 kalau dia suka motong omongan lu, naikin ke 1200 kalau lu suka mikir dulu).</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s9d"><div class="body">
+      <p><strong>Kalau salah dengar:</strong> dia nampilin transkrip di tengah layar. Tinggal ulangi. Ketik manual juga bisa lewat kolom bawah.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s9e"><div class="body">
+      <p><strong>Backup memori</strong> (1× seminggu cukup): buka <code>http://127.0.0.1:8080/api/export</code> → Chrome simpan sebagai file JSON. Simpen di Drive.</p>
+    </div></div>
+  </section>
+
+  <!-- 10 -->
+  <section id="s10">
+    <span class="num">10 — KALAU RUSAK</span>
+    <h2>Gejala → sebab → obat</h2>
+    <p class="sub">Tap buat buka. 90% masalah ada di lima pertama.</p>
+
+    <details><summary>Error “bad interpreter: python3.13” waktu install</summary><div class="inner">
+      <p><strong>Penyebab:</strong> lu pernah upgrade paket <code>python</code> di Termux; file <code>pip</code> lama masih nunjuk ke python3.13 yang sudah dihapus.</p>
+      <div class="code"><pre>python -m ensurepip --upgrade
+python -m pip --version
+bash scripts/install.sh</pre><button class="copy">copy</button></div>
+      <p>Kalau <code>ensurepip</code> ikut gagal: <code>pkg install -y python-pip</code> lalu ulangi. Yang penting: pakai <code>python -m pip</code>, jangan perintah <code>pip</code> langsung.</p>
+    </div></details>
+
+    <details><summary>Error “pydantic-core / maturin / rustc target not supported”</summary><div class="inner">
+      <p><strong>Penyebab:</strong> ini kalau lu pasang FastAPI manual. pydantic-core ditulis Rust dan belum bisa dibangun untuk Android aarch64 + Python 3.14.</p>
+      <p><strong>Obat:</strong> project ini sudah nggak butuh FastAPI/pydantic. Kalau lu sempat install manual, hapus dan pasang versi Starlette:</p>
+      <div class="code"><pre>python -m pip uninstall -y fastapi pydantic pydantic-core
+bash scripts/install.sh</pre><button class="copy">copy</button></div>
+    </div></details>
+
+    <details><summary>Mic gak jalan, ketuk orb tapi gak ada reaksi</summary><div class="inner">
+      <p><strong>Penyebab:</strong> Chrome blokir mic karena alamatnya bukan <code>127.0.0.1</code>/<code>localhost</code>. Ini paling sering — misal lu buka pakai IP LAN.</p>
+      <p><strong>Obat:</strong> pastikan URL-nya persis <code>http://127.0.0.1:8080</code>. Lalu Chrome → titik tiga → <em>Settings</em> → <em>Site settings</em> → <em>Microphone</em> → pastikan <code>127.0.0.1</code> diizinkan.</p>
+    </div></details>
+
+    <details><summary>Dia jawab di layar, tapi gak ada suara</summary><div class="inner">
+      <p><strong>Penyebab 1:</strong> Chrome gak boleh bunyi sebelum layar disentuh (aturan autoplay). <strong>Obat:</strong> tap layar sekali, ulangi.</p>
+      <p><strong>Penyebab 2:</strong> <code>edge-tts</code> gagal keinstall dan <code>FISH_API_KEY</code> kosong. <strong>Obat:</strong> cek dengan diag, lalu isi Fish Audio (bagian 04b).</p>
+      <p><strong>Penyebab 3:</strong> volume media HP kecil / speaker ke-mute. Cek pakai video YouTube dulu.</p>
+    </div></details>
+
+    <details><summary>Muncul tulisan “Otak gue lagi gangguan: 401 / 403”</summary><div class="inner">
+      <p><strong>Penyebab:</strong> API key salah, kosong, atau kena limit provider.</p>
+      <div class="code"><pre>grep -E '^LLM_(BASE_URL|MODEL)=' ~/kosmate/.env
+grep -c '^LLM_API_KEY=sk-' ~/kosmate/.env</pre><button class="copy">copy</button></div>
+      <p>Base URL harus diakhiri <code>/v1</code> dan gak boleh ada <code>/chat/completions</code> di belakangnya.</p>
+    </div></details>
+
+    <details><summary>“…model not found” atau 404</summary><div class="inner">
+      <p><strong>Penyebab:</strong> nama model gak ada di provider lu.</p>
+      <div class="code"><pre>curl -s https://api.teamorouter.com/v1/models \
+  -H "Authorization: Bearer $(grep '^LLM_API_KEY=' ~/kosmate/.env | cut -d= -f2)" \
+  | grep -o '"id":"[^"]*"' | head -20</pre><button class="copy">copy</button></div>
+      <p>Tempel salah satu ID yang muncul ke <code>LLM_MODEL</code>.</p>
+    </div></details>
+
+    <details><summary>Server mati sendiri kalau layar mati / app ditutup</summary><div class="inner">
+      <p><strong>Penyebab:</strong> Android bunuh proses Termux.</p>
+      <p><strong>Obat:</strong> 1) <code>termux-wake-lock</code> (sudah otomatis lewat <code>termux-start.sh</code>), 2) Termux → Battery → Unrestricted, 3) di MIUI: buka recent apps → tahan Termux → kunci (ikon gembok).</p>
+    </div></details>
+
+    <details><summary>“Address already in use”</summary><div class="inner">
+      <p><strong>Penyebab:</strong> server lama masih jalan.</p>
+      <div class="code"><pre>pkill -f "kos.app:app"
+sleep 1
+bash scripts/termux-start.sh</pre><button class="copy">copy</button></div>
+      <p>Atau pakai port lain: <code>bash scripts/termux-start.sh 8081</code></p>
+    </div></details>
+
+    <details><summary>Suaranya kepotong / jawabannya kacau</summary><div class="inner">
+      <p><strong>Penyebab:</strong> model gratis sedang antre, atau balasan kepanjangan.</p>
+      <p><strong>Obat:</strong> ganti <code>LLM_MODEL</code> ke <code>gemini-3.5-flash-lite</code>; atau minta dia jawab lebih pendek (“singkat aja”); atau naikin jeda dengerin di gear.</p>
+    </div></details>
+
+    <details><summary>Memori gak pernah nambah</summary><div class="inner">
+      <p>Normal: ekstraksi jalan tiap 4 giliran atau kalau lu bilang <em>inget / catat / besok / deadline</em>. Cek langsung:</p>
+      <div class="code"><pre>curl -s http://127.0.0.1:8080/api/memory/facts | head -c 400</pre><button class="copy">copy</button></div>
+      <p>Kalau kosong terus padahal udah ngobrol banyak, berarti model lu males bikin JSON — ganti model fallback.</p>
+    </div></details>
+
+    <details><summary>Dia denger suaranya sendiri / jawaban muter-muter</summary><div class="inner">
+      <p><strong>Penyebab:</strong> speaker terlalu dekat mic, dan HP gak punya echo cancellation di browser.</p>
+      <p><strong>Obat:</strong> jauhkan speaker dari HP minimal 1 meter, kecilin volume, atau nyalakan <em>dengerin otomatis</em> = mati (jadi lu kontrol manual pakai orb).</p>
+    </div></details>
+
+    <details><summary>“Permission denied” waktu jalanin script</summary><div class="inner">
+      <div class="code"><pre>cd ~/kosmate
+chmod +x run.sh scripts/*.sh
+bash scripts/install.sh</pre><button class="copy">copy</button></div>
+    </div></details>
+  </section>
+
+  <!-- 11 -->
+  <section id="s11">
+    <span class="num">11 — RAWAT</span>
+    <h2>Biar tahan berbulan-bulan</h2>
+
+    <div class="step"><input type="checkbox" data-k="s11a"><div class="body">
+      <p><strong>Baterai.</strong> Dicas 24/7 bikin baterai kembung. Idealnya batasi cas 60–80% (butuh root + app <em>Battery Charge Limit</em>). Tanpa root: colok ke smart plug + timer (nyala 2 jam, mati 2 jam), atau lepas casing dan tagakkan HP biar gak panas.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s11b"><div class="body">
+      <p><strong>Layar.</strong> Browser butuh layar nyala. Fully Kiosk bisa bikin layar redup banget (brightness 1%) dengan background gelap — hemat dan gak nyilauin mata waktu tidur.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s11c"><div class="body">
+      <p><strong>Backup memori mingguan</strong> → <code>http://127.0.0.1:8080/api/export</code> → simpan JSON. Ini isi “ingatan” dia satu-satunya. File aslinya: <code>~/kosmate/data/kosmate.db</code></p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s11d"><div class="body">
+      <p><strong>Update kode</strong> (kalau gw kirim versi baru): timpa folder <code>kos/</code> dan <code>web/</code> saja. Jangan hapus <code>data/</code> — di situ memorinya.</p>
+    </div></div>
+
+    <div class="step"><input type="checkbox" data-k="s11e"><div class="body">
+      <p><strong>Log kalau ada error:</strong> <code>tail -50 ~/kosmate/data/boot.log</code> (kalau jalan lewat autostart).</p>
+    </div></div>
+  </section>
+
+  <!-- 12 -->
+  <section id="s12">
+    <span class="num">12 — STUCK?</span>
+    <h2>Kirim ini ke gw</h2>
+    <p class="sub">Satu perintah, hasilnya langsung ketahuan salahnya di mana.</p>
+    <div class="code"><pre>cd ~/kosmate
+bash scripts/termux-diag.sh</pre><button class="copy">copy</button></div>
+    <p>Copy semua outputnya, tempel ke chat. Isinya: versi python, dependency yang ada/gak, key kebaca atau nggak (gak nampilin isi key, cuma jumlah karakter), port kepakai, server nyahut, dan jumlah baris memori.</p>
+    <div class="note"><p>Kalau bingung di satu langkah, jangan lanjut ke langkah berikutnya. Error-nya numpuk dan jadi susah dilacak. Berhenti, kirim diag, tunggu.</p></div>
+  </section>
+
+  <footer>
+    KOSMATE · tutor v1 · Poco X3 NFC · Termux tanpa root<br>
+    progress kesimpan di browser ini (localStorage) — aman walau halaman ditutup
+  </footer>
+</div>
+
+<script>
+(function () {
+  var KEY = "kosmate.tutorial.v1";
+  var boxes = Array.prototype.slice.call(document.querySelectorAll("input[type=checkbox]"));
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { saved = {}; }
+
+  function render() {
+    var done = 0;
+    boxes.forEach(function (b) {
+      if (b.checked) done++;
+    });
+    var pct = boxes.length ? Math.round((done / boxes.length) * 100) : 0;
+    document.getElementById("fill").style.width = pct + "%";
+    document.getElementById("pct").textContent = pct + "%";
+  }
+
+  boxes.forEach(function (b) {
+    if (saved[b.dataset.k]) b.checked = true;
+    b.addEventListener("change", function () {
+      saved[b.dataset.k] = b.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+      render();
+    });
+  });
+  render();
+
+  // tombol copy
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var pre = btn.parentElement.querySelector("pre");
+      var text = pre.innerText;
+      var done = function () {
+        btn.textContent = "copied";
+        setTimeout(function () { btn.textContent = "copy"; }, 1200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(function () { fallback(text, done); });
+      } else {
+        fallback(text, done);
+      }
+    });
+  });
+
+  function fallback(text, done) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+})();
+</script>
+</body>
+</html>

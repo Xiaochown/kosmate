@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kosmate — blueprint AI teman kos dari Poco X3 NFC</title>
+<style>
+  :root{
+    --bg:#0b0d10; --surface:#15171b; --surface-2:#1b1e24; --border:#2a2e35;
+    --text:#eceef2; --muted:#9aa2ad; --dim:#646c78;
+    --accent:#5e6ad2; --accent-soft:#8b95e8; --ok:#3ecf8e; --warn:#e0a458; --danger:#e5484d;
+    --mono:ui-monospace,SFMono-Regular,"JetBrains Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font:15px/1.65 "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:860px;margin:0 auto;padding:40px 20px 80px}
+  header{border-bottom:1px solid var(--border);padding-bottom:28px;margin-bottom:8px}
+  .kicker{
+    font:11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+    display:flex;gap:10px;align-items:center;margin-bottom:18px;
+  }
+  .kicker b{color:var(--accent-soft);font-weight:500}
+  h1{font-size:clamp(26px,5vw,38px);line-height:1.15;letter-spacing:-.02em;margin:0 0 14px;font-weight:600}
+  .lede{color:var(--muted);font-size:16px;max-width:66ch;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+  .tag{
+    font:11px/1 var(--mono);color:var(--muted);border:1px solid var(--border);
+    background:var(--surface);border-radius:999px;padding:7px 11px;
+  }
+  .tag.ok{color:var(--ok);border-color:#245c44;background:#10231b}
+  section{padding:34px 0;border-bottom:1px solid #1c2026}
+  section:last-of-type{border-bottom:none}
+  .num{
+    font:11px/1 var(--mono);color:var(--accent-soft);letter-spacing:.14em;
+    display:block;margin-bottom:10px;
+  }
+  h2{font-size:20px;letter-spacing:-.01em;margin:0 0 6px;font-weight:600}
+  h2+.sub{color:var(--dim);font-size:13.5px;margin:0 0 20px}
+  p{margin:0 0 14px;color:#cfd4dc}
+  strong{color:#fff;font-weight:600}
+  code{font:12.5px/1.5 var(--mono);background:var(--surface-2);border:1px solid var(--border);
+       border-radius:5px;padding:1.5px 5px;color:#d8dcf0}
+  pre{
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;overflow-x:auto;margin:0 0 16px;
+    font:12.5px/1.7 var(--mono);color:#c8cdd8;
+  }
+  pre .c{color:var(--dim)}
+  pre .a{color:var(--accent-soft)}
+  .grid{display:grid;gap:12px;grid-template-columns:1fr}
+  @media(min-width:640px){.grid.two{grid-template-columns:1fr 1fr}.grid.three{grid-template-columns:repeat(3,1fr)}}
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 17px;
+  }
+  .card h3{font-size:13px;margin:0 0 6px;font-weight:600;letter-spacing:-.01em}
+  .card p{font-size:13px;color:var(--muted);margin:0}
+  .card .big{font:600 22px/1.2 var(--mono);color:#fff;display:block;margin-bottom:6px;letter-spacing:-.02em}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:0 0 8px}
+  th,td{text-align:left;padding:10px 10px;border-bottom:1px solid #1e222a;vertical-align:top}
+  th{font:11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:500}
+  td.mono{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  .dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.danger{background:var(--danger)}
+  ol,ul{padding-left:20px;margin:0 0 14px;color:#cfd4dc}
+  li{margin-bottom:7px}
+  li::marker{color:var(--dim)}
+  .phase{border-left:2px solid var(--border);padding:0 0 0 16px;margin-bottom:20px}
+  .phase.done{border-left-color:var(--ok)}
+  .phase.next{border-left-color:var(--accent)}
+  .phase h3{font-size:14px;margin:0 0 4px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .phase h3 span{font:10px/1 var(--mono);color:var(--dim);border:1px solid var(--border);border-radius:4px;padding:3px 6px}
+  .phase p{font-size:13px;color:var(--muted);margin:0 0 6px}
+  .phase ul{font-size:13px;margin:0;padding-left:18px}
+  .callout{
+    border:1px solid #2f3350;background:linear-gradient(180deg,#141830,#111319);
+    border-radius:10px;padding:16px 17px;margin:0 0 16px;
+  }
+  .callout h3{margin:0 0 8px;font-size:13px;color:var(--accent-soft);font-family:var(--mono);
+              letter-spacing:.08em;text-transform:uppercase;font-weight:500}
+  .callout p:last-child{margin:0}
+  footer{color:var(--dim);font-size:12px;padding-top:28px;font-family:var(--mono);line-height:1.9}
+  .risk td:first-child{color:var(--warn);font-family:var(--mono);font-size:11.5px;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker"><b>BLUEPRINT</b> · KOSMATE v0.1 · 31 OKT 2026</div>
+  <h1>Poco X3 NFC nganggur → teman kos yang bisa diajak ngomong</h1>
+  <p class="lede">Jawabannya: <strong>bisa, dan prototipenya sudah jalan</strong> — bukan mockup. Suara real-time, memori yang inget hidup lu, tiga mode (temen / tutor / kerja), dan semuanya jalan di HP itu sendiri tanpa server sewaan.</p>
+  <div class="meta">
+    <span class="tag ok">● prototipe teruji jalan</span>
+    <span class="tag">LLM: API key lu sendiri</span>
+    <span class="tag">TTS: Fish Audio · gratis</span>
+    <span class="tag">biaya ≈ Rp15 rb/bulan</span>
+    <span class="tag">latency 1,5–3,5 s</span>
+  </div>
+</header>
+
+<section>
+  <span class="num">01 — KEPUTUSAN</span>
+  <h2>Layak, tapi bukan "beli alat baru"</h2>
+  <p class="sub">Yang lu butuhkan cuma 3 hal yang sudah lu punya + 1 speaker.</p>
+  <div class="grid three">
+    <div class="card"><span class="big">1 HP</span><p>Poco X3 NFC: Snapdragon 732G, RAM 6GB. Cukup buat jadi otak + mic + speaker + layar sekaligus.</p></div>
+    <div class="card"><span class="big">1 key</span><p>API LLM OpenAI-compatible punya lu. Model gratis (deepseek-flash-free / gemini-flash-lite) sudah lebih dari cukup buat ngobrol.</p></div>
+    <div class="card"><span class="big">1 speaker</span><p>Speaker aktif ke jack 3.5mm. Ini yang bikin dia kerasa "ada di kamar", bukan aplikasi di HP.</p></div>
+  </div>
+</section>
+
+<section>
+  <span class="num">02 — ARSITEKTUR</span>
+  <h2>Satu HP, tiga lapisan</h2>
+  <p class="sub">Kenapa gak pakai app jadi? Karena yang bikin "real-time" itu kendali atas tiap milidetik, dan itu cuma bisa kalau pipeline-nya punya sendiri.</p>
+<pre>
+  🎙 <span class="a">mic</span> ──► Chromium / Fully Kiosk  (web UI, VAD, Web Speech API)
+        │        STT streaming id-ID, gratis
+        ▼
+   <span class="a">FastAPI :8080</span>  ── satu proses di Termux, tanpa root, tanpa Docker
+        ├─ /api/chat ─► LLM API lu  (SSE, token keluar satu-satu)
+        ├─ /api/tts  ─► Fish Audio  ─► fallback edge-tts    🔊 speaker
+        ├─ /api/stt  ─► Fish ASR    ─► fallback whisper.cpp
+        └─ <span class="a">memori</span>     ─► SQLite + FTS5: fakta bertanggal + episode lama
+</pre>
+  <div class="callout">
+    <h3>kenapa memori bukan cuma "vector database"</h3>
+    <p>Karena hidup lu berubah: jadwal semester baru, kos pindah, target ganti. Fakta butuh <strong>waktu</strong> (<code>valid_at</code> / <code>invalid_at</code>), bukan cuma kemiripan makna. Jadi yang dipakai: tabel fakta berstruktur + FTS5 + recency — akurat, jalan tanpa GPU, tanpa biaya embedding.</p>
+  </div>
+</section>
+
+<section>
+  <span class="num">03 — SUDAH TERBUKTI</span>
+  <h2>Yang benar-benar diuji, bukan diklaim</h2>
+  <p class="sub">Semua angka di bawah dari eksekusi nyata di prototipe ini.</p>
+  <table>
+    <tr><th>Uji</th><th>Hasil</th></tr>
+    <tr><td>LLM streaming (model gratis)</td><td><span class="dot ok"></span>token pertama ~0,3–1 s, jawaban natural bahasa Indonesia santai</td></tr>
+    <tr><td>Memori otomatis</td><td><span class="dot ok"></span>dari obrolan "alergi kacang, ujian Senin jam 8" → 3 fakta tersimpan tanpa disuruh</td></tr>
+    <tr><td>Retrieval</td><td><span class="dot ok"></span>ditanya "gue alergi apa?" → jawab benar dari memori, bukan ngarang</td></tr>
+    <tr><td>TTS Indonesia</td><td><span class="dot ok"></span>61 KB MP3 dari 1 kalimat, suara neural (Gadis/Ardi), biaya Rp0</td></tr>
+    <tr><td>Sapaan sadar waktu</td><td><span class="dot ok"></span>"Hai, malam Sabtu nih. Hari ini gimana, capek banget nggak?"</td></tr>
+    <tr><td>3 mode</td><td><span class="dot ok"></span>temen / tutor / kerja, ganti tanpa restart</td></tr>
+    <tr><td>Wake word</td><td><span class="dot warn"></span>belum — sekarang masih ketuk orb (fase P1)</td></tr>
+    <tr><td>Barge-in (potong jawaban)</td><td><span class="dot warn"></span>belum — butuh echo cancellation (fase P1)</td></tr>
+  </table>
+</section>
+
+<section>
+  <span class="num">04 — LATENCY</span>
+  <h2>Budget "kerasa hidup": di bawah 1,5 detik</h2>
+  <p class="sub">Ini yang bikin asisten gagal atau enak diajak ngobrol. Target realistis sekarang 1,5–3,5 s; target berikutnya &lt;1,2 s.</p>
+  <table>
+    <tr><th>Tahap</th><th>Sekarang</th><th>Cara nurunin</th></tr>
+    <tr><td>VAD (deteksi lu selesai ngomong)</td><td class="mono">300–900 ms</td><td>turunin ambang jeda ke 600 ms</td></tr>
+    <tr><td>STT</td><td class="mono">200–500 ms</td><td>streaming, jangan kirim file utuh</td></tr>
+    <tr><td>LLM token pertama</td><td class="mono">300–2000 ms</td><td>model flash/free, hindari reasoning model</td></tr>
+    <tr><td>TTS byte pertama</td><td class="mono">400–1500 ms</td><td>Fish &gt; edge-tts, cache kalimat sapaan</td></tr>
+  </table>
+  <p><strong>Trik utamanya:</strong> balasan dipecah per kalimat, dan tiap kalimat langsung disintesis <em>sambil</em> model masih menulis sisanya. Jadi lu dengar suara sebelum jawaban selesai ditulis.</p>
+</section>
+
+<section>
+  <span class="num">05 — ROADMAP</span>
+  <h2>Empat fase, tiap fase kepakai</h2>
+  <div class="phase done">
+    <h3>P0 · Fondasi <span>SUDAH JALAN</span></h3>
+    <p>Voice loop, memori fakta, 3 mode, sapaan proaktif, UI kiosk.</p>
+  </div>
+  <div class="phase next">
+    <h3>P1 · Bikin betah <span>1–2 MINGGU</span></h3>
+    <ul>
+      <li><strong>Wake word</strong> "Kai" — gak perlu ketuk lagi</li>
+      <li><strong>Flashcard SRS</strong> Logika &amp; Basis Data: dia yang nanya, lu jawab pakai suara</li>
+      <li><strong>Jurnal + ringkasan malam</strong> tiap jam 22: "hari ini lo gimana"</li>
+      <li><strong>Barge-in</strong> — bisa motong jawabannya di tengah</li>
+      <li><strong>Deadline &amp; tugas</strong> dari obrolan</li>
+    </ul>
+  </div>
+  <div class="phase">
+    <h3>P2 · Bikin tahan lama <span>2–4 MINGGU</span></h3>
+    <ul>
+      <li>Otak pindah ke STB Armbian 24/7, HP jadi satelit (gak panas, gak takut mati)</li>
+      <li>whisper.cpp lokal → STT gratis, offline, suara gak keluar HP</li>
+      <li>Kloning suara sendiri (rekam 1 menit di Fish Audio)</li>
+      <li>Satelit kedua di dapur/kamar mandi</li>
+    </ul>
+  </div>
+  <div class="phase">
+    <h3>P3 · Bikin nyambung <span>BULAN 2</span></h3>
+    <ul>
+      <li>Kalender kampus, Obsidian/Notion, Home Assistant (lampu &amp; AC)</li>
+      <li>Kontrol dari Telegram saat di luar</li>
+      <li>Sleep mode: suara pelan, cerita pendek, auto-off</li>
+      <li>Versi native Kotlin + foreground service = always-on sejati</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <span class="num">06 — BIAYA</span>
+  <h2>≈ Rp15 ribu/bulan</h2>
+  <table>
+    <tr><th>Komponen</th><th>Biaya</th></tr>
+    <tr><td>LLM (model free)</td><td class="mono">Rp0</td></tr>
+    <tr><td>TTS Fish <code>s2.1-pro-free</code> / edge-tts</td><td class="mono">Rp0</td></tr>
+    <tr><td>ASR Fish (kalau dipakai, per jam audio)</td><td class="mono">≈ Rp5.800</td></tr>
+    <tr><td>Listrik HP 24/7 (~5 W)</td><td class="mono">Rp10–15 rb</td></tr>
+  </table>
+  <p>Bandingkan dengan beli smart speaker AI: Rp700 rb–2 jt sekali bayar, tapi gak punya memori hidup lu dan gak bisa diajari mapel kuliah.</p>
+</section>
+
+<section>
+  <span class="num">07 — RISIKO</span>
+  <h2>Yang bakal ngeganggu kalau diabaikan</h2>
+  <table class="risk">
+    <tr><th>Masalah</th><th>Solusi</th></tr>
+    <tr><td>baterai 24/7</td><td>Batasi cas 60–80% (root + Battery Charge Limit) atau smart plug timer. Lepas casing, tagakkan HP.</td></tr>
+    <tr><td>Bluetooth delay</td><td>Pakai jack 3.5mm, jangan speaker Bluetooth.</td></tr>
+    <tr><td>denger suara sendiri</td><td>Mic dimatikan selama TTS (sudah di-handle). Barge-in butuh echo cancellation → P1.</td></tr>
+    <tr><td>privasi</td><td>Web Speech API mengirim audio ke Google. whisper.cpp lokal di P2 menghilangkan itu.</td></tr>
+    <tr><td>model gratis lemot</td><td>Simpan 2 model di <code>.env</code> (utama + fallback), ganti kalau sedang antre.</td></tr>
+    <tr><td>Termux mati</td><td><code>termux-wake-lock</code> + matikan battery optimization + Fully Kiosk "restart on crash".</td></tr>
+  </table>
+</section>
+
+<section>
+  <span class="num">08 — MULAI</span>
+  <h2>Tiga perintah, lima belas menit</h2>
+<pre><span class="c"># di Termux (dari F-Droid, bukan Play Store)</span>
+cd kosmate
+bash scripts/install.sh     <span class="c"># python, ffmpeg, venv, deps</span>
+cp .env.example .env        <span class="c"># isi LLM_API_KEY (+ FISH_API_KEY)</span>
+termux-wake-lock &amp;&amp; bash run.sh
+<span class="c"># buka http://127.0.0.1:8080 di Chrome HP</span></pre>
+  <p>Foldernya sudah lengkap: <code>kos/</code> (otak), <code>web/</code> (UI orb), <code>scripts/</code> (install, kiosk, smoke test), <code>README.md</code> (panduan + jebakan yang sudah ketemu).</p>
+
+  <div class="callout">
+    <h3>satu hal yang paling menentukan</h3>
+    <p>Bukan model, bukan API. <strong>Speaker-nya.</strong> Suara yang keluar dari speaker kecil HP bikin dia kerasa gadget; suara dari speaker ruangan bikin dia kerasa teman satu kamar. Itu pembeda terbesar antara "proyek iseng" dan "ada yang nemenin gw di kos".</p>
+  </div>
+</section>
+
+<footer>
+  KOSMATE v0.1 · prototipe fungsional · Termux + FastAPI + SQLite<br>
+  diuji: LLM stream, ekstraksi fakta, retrieval, TTS, sapaan sadar-jam
+</footer>
+
+</div>
+</body>
+</html>

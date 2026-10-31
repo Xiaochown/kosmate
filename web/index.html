@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0a0b0d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Kosmate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-state="idle">
+<div id="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-name" id="brandName">Kosmate</div>
+      <div class="brand-sub" id="brandSub">teman kos · offline-first</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="pill" id="memBtn" title="Memori">
+      <span class="dot" id="healthDot"></span><span id="memCount">memori</span>
+    </button>
+    <button class="pill" id="gear" title="Pengaturan">⚙</button>
+  </div>
+
+  <div class="modes" id="modes">
+    <button class="mode-chip active" data-mode="temen">temen</button>
+    <button class="mode-chip" data-mode="tutor">tutor</button>
+    <button class="mode-chip" data-mode="kerja">kerja</button>
+  </div>
+
+  <div class="stage">
+    <div class="orb-wrap">
+      <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+      <div class="orb" id="orb">
+        <svg class="orb-icon" viewBox="0 0 24 32" fill="none">
+          <rect x="9" y="1" width="6" height="15" rx="3" fill="#cfd6ff" opacity=".9"/>
+          <path d="M5 14v2a7 7 0 0 0 14 0v-2" stroke="#cfd6ff" stroke-width="1.6" stroke-linecap="round" opacity=".8"/>
+          <path d="M12 23v6M8.5 29h7" stroke="#cfd6ff" stroke-width="1.6" stroke-linecap="round" opacity=".5"/>
+        </svg>
+      </div>
+    </div>
+    <div class="status" id="status">ketuk orb atau tombol mic buat mulai</div>
+    <div class="live" id="live"></div>
+  </div>
+
+  <div class="reply" id="reply">
+    <div class="who" id="replyWho">kai</div>
+    <div class="you" id="replyYou"></div>
+    <div id="replyText"></div>
+  </div>
+
+  <div class="composer">
+    <input id="input" type="text" placeholder="atau ketik di sini…" autocomplete="off">
+    <button class="icon-btn primary" id="sendBtn" title="Kirim">➤</button>
+    <button class="icon-btn" id="micBtn" title="Bicara">🎙</button>
+  </div>
+
+  <!-- sheet: pengaturan + memori -->
+  <div class="sheet" id="sheet">
+    <h3 id="sheetTitle">Pengaturan</h3>
+    <p class="hint" id="sheetHint">Semua data memori disimpan lokal di HP ini (SQLite). Tidak ada yang dikirim ke siapa pun selain provider LLM/TTS yang kamu pilih.</p>
+
+    <div class="field">
+      <label>Mode</label>
+      <select id="setMode">
+        <option value="temen">temen — ngobrol &amp; nemenin</option>
+        <option value="tutor">tutor — jelasin &amp; uji pemahaman</option>
+        <option value="kerja">kerja — langkah konkret &amp; deadline</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Suara</label>
+      <select id="setVoice">
+        <option value="id-ID-GadisNeural">Gadis (Indonesia, hangat)</option>
+        <option value="id-ID-ArdiNeural">Ardi (Indonesia, maskulin)</option>
+        <option value="en-US-AvaMultilingualNeural">Ava (multibahasa)</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <span>Dengerin otomatis</span>
+      <button class="pill" id="setAutoListen"><span class="dot"></span>nonaktif</button>
+    </div>
+    <div class="row">
+      <span>Jeda dengerin (ms)</span>
+      <input id="setSilence" type="text" inputmode="numeric" style="width:76px;text-align:center" value="900">
+    </div>
+    <div class="row">
+      <span>Ucapkan balasan</span>
+      <button class="pill on" id="setSpeak"><span class="dot ok"></span>aktif</button>
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <span style="font-weight:500">Memori</span>
+      <span class="badge" id="memStats">0 fakta</span>
+    </div>
+    <div class="facts" id="facts"></div>
+    <p class="tiny" id="factHint">Kosong. Ajak ngobrol dulu — Kosmate nyatet fakta penting sendiri.</p>
+
+    <div class="row" style="margin-top:14px">
+      <span class="tiny">v0.1 · prototype</span>
+      <button class="pill" id="closeSheet">tutup</button>
+    </div>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
