@@ -56,6 +56,14 @@ ok "python: $PYBIN"
 
 # ------------------------------------------------------------------- 2. kredensial
 head_ "2/6 kredensial LLM"
+KEEP_ENV=0
+if [ -f .env ] && grep -qE '^LLM_API_KEY=.+' .env && [ "${KOSMATE_FORCE_CONFIG:-0}" != "1" ]; then
+  KEEP_ENV=1
+  ok ".env lama dipakai — kredensial gak ditanya lagi"
+  info "mau ubah? jalankan: KOSMATE_FORCE_CONFIG=1 bash scripts/autoinstall.sh"
+fi
+
+if [ "$KEEP_ENV" = "0" ]; then
 ask(){ # ask <var> <prompt> <default>
   local var="$1" prompt="$2" def="${3:-}" val=""
   if [ -n "${!var:-}" ]; then printf -v "$var" '%s' "${!var}"; return; fi
@@ -106,6 +114,13 @@ if [ "${TTS_PROVIDER:-}" = "fish" ] || [ -n "${KOSMATE_FISH_KEY:-}" ]; then :; e
 fi
 
 "$PYBIN" scripts/_write_env.py || { warn "gagal nulis .env"; exit 1; }
+fi  # selesai blok kredensial
+
+# kalau .env lama dipakai, ambil key-nya buat tes
+if [ -z "${KOSMATE_LLM_KEY:-}" ] && [ -f .env ]; then
+  KOSMATE_LLM_KEY="$(grep -E '^LLM_API_KEY=' .env | head -1 | cut -d= -f2-)"
+  export KOSMATE_LLM_KEY
+fi
 
 # ----------------------------------------------------------------- 3. tes otak
 head_ "3/6 tes otak (LLM)"

@@ -23,6 +23,7 @@
     <button class="pill" id="memBtn" title="Memori">
       <span class="dot" id="healthDot"></span><span id="memCount">memori</span>
     </button>
+    <button class="pill" id="diagBtn" title="Diagnostik">diag</button>
     <button class="pill" id="gear" title="Pengaturan">⚙</button>
   </div>
 
@@ -82,6 +83,15 @@
       </select>
     </div>
 
+    <div class="field">
+      <label>Mesin suara</label>
+      <select id="setTtsMode">
+        <option value="auto">auto — server dulu, kalau gagal pakai suara HP</option>
+        <option value="server">server saja (Fish/edge, lebih natural)</option>
+        <option value="browser">suara HP saja (offline, tanpa internet)</option>
+      </select>
+    </div>
+
     <div class="row">
       <span>Dengerin otomatis</span>
       <button class="pill" id="setAutoListen"><span class="dot"></span>nonaktif</button>
@@ -103,8 +113,21 @@
     <p class="tiny" id="factHint">Kosong. Ajak ngobrol dulu — Kosmate nyatet fakta penting sendiri.</p>
 
     <div class="row" style="margin-top:14px">
-      <span class="tiny">v0.1 · prototype</span>
+      <span class="tiny">v0.2 · prototype</span>
       <button class="pill" id="closeSheet">tutup</button>
+    </div>
+  </div>
+
+  <!-- sheet: diagnostik -->
+  <div class="sheet" id="diagSheet">
+    <h3 id="diagTitle">Diagnostik</h3>
+    <p class="hint">Kalau suara atau mic bermasalah, jawabannya ada di sini. Tap tombol tes buat memastikan.</p>
+    <div class="facts" id="diagBox"></div>
+    <div class="row" style="margin-top:14px;gap:8px">
+      <button class="pill" id="diagTtsTest">tes suara</button>
+      <button class="pill" id="diagMicTest">tes mic</button>
+      <span style="flex:1"></span>
+      <button class="pill" id="closeDiag">tutup</button>
     </div>
   </div>
 </div>

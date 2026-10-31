@@ -29,6 +29,8 @@ from .llm import complete, stream_chat
 
 WEB_DIR = ROOT / "web"
 FACT_WORDS = ("inget", "ingat", "catat", "note", "jangan lupa", "besok", "deadline")
+LAST_TTS_ERROR = ""
+LAST_TTS_OK = ""
 
 
 @asynccontextmanager
@@ -76,6 +78,8 @@ async def health(request: Request):
             "fish_key": bool(CFG.fish_key),
             "stt": CFG.stt_provider,
             "mode": CFG.persona_mode,
+            "tts_last_ok": LAST_TTS_OK,
+            "tts_last_error": LAST_TTS_ERROR,
             "memory": memory.stats(),
             "time": time.time(),
         }
@@ -125,16 +129,38 @@ async def chat(request: Request):
 
 
 async def synth(request: Request):
+    global LAST_TTS_ERROR, LAST_TTS_OK
     body = await request.json()
     text = (body.get("text") or "").strip()
     voice = (body.get("voice") or "").strip() or None
     if not text:
         raise HTTPException(400, "text kosong")
     return StreamingResponse(
-        tts.synth_stream(text, voice=voice),
+        _tts_guard(tts.synth_stream(text, voice=voice)),
         media_type="audio/mpeg",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+async def _tts_guard(agen):
+    """Catat error TTS terakhir biar kelihatan di /api/health (buat diagnosa)."""
+    global LAST_TTS_ERROR, LAST_TTS_OK
+    n = 0
+    try:
+        async for chunk in agen:
+            n += len(chunk)
+            yield chunk
+    except Exception as e:  # noqa: BLE001
+        LAST_TTS_ERROR = f"{type(e).__name__}: {e}"[:300]
+        print("[tts] gagal:", LAST_TTS_ERROR)
+        raise
+    else:
+        if n:
+            LAST_TTS_ERROR = ""
+            LAST_TTS_OK = f"{n} byte"
+        else:
+            LAST_TTS_ERROR = "audio kosong"
+            print("[tts] audio kosong")
 
 
 async def greeting(request: Request):
