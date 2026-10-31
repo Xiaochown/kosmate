@@ -16,3 +16,9 @@ data/*.log
 node_modules/
 .fish_key
 data/samples/
+
+# state runtime (jangan pernah masuk repo)
+data/pin.txt
+data/mode.txt
+data/voice.json
+data/settings.json
