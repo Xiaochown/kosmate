@@ -18,6 +18,7 @@ def data_uri(path: pathlib.Path, mime: str) -> str:
 # inline gambar
 for nama, mime in (("story.webp", "image/webp"), ("focus.webp", "image/webp"),
                    ("remind.webp", "image/webp"), ("journal.webp", "image/webp"),
+                   ("banner.webp", "image/webp"), ("mascot.webp", "image/webp"),
                    ("icon-192.png", "image/png")):
     f = ROOT / "assets" / nama
     if f.exists():
@@ -26,6 +27,8 @@ for nama, mime in (("story.webp", "image/webp"), ("focus.webp", "image/webp"),
 
 # buang manifest + stylesheet eksternal, sisip CSS
 html = re.sub(r'\s*<link rel="manifest"[^>]*>', "", html)
+html = re.sub(r'\s*<link rel="preconnect"[^>]*>', "", html)
+html = re.sub(r'\s*<link href="https://fonts\.googleapis\.com[^>]*>', "", html)
 html = html.replace('<link rel="stylesheet" href="style.css">', f"<style>\n{css}\n</style>")
 
 # sisip JS inline, buang tag eksternal

@@ -22,10 +22,18 @@
         <span id="brandSub">connecting…</span>
       </div>
       <nav class="topnav">
-        <button class="link" id="actBtn" type="button">Actions</button>
-        <button class="link" id="memBtn" type="button">Memory <span class="count" id="memCount">0</span></button>
-        <button class="link" id="diagBtn" type="button">Diagnostics</button>
-        <button class="link" id="gear" type="button">Settings</button>
+        <button class="link" id="actBtn" type="button" title="Quick actions" aria-label="Quick actions">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h7"/></svg><span class="lbl">Actions</span>
+        </button>
+        <button class="link" id="memBtn" type="button" title="Memory" aria-label="Memory">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a4 4 0 0 0-4 4v6a3 3 0 0 0 6 0V9a2 2 0 0 1 4 0v7"/><circle cx="8" cy="10" r="0.6" fill="currentColor"/></svg><span class="lbl">Memory</span> <span class="count" id="memCount">0</span>
+        </button>
+        <button class="link" id="diagBtn" type="button" title="Diagnostics" aria-label="Diagnostics">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 3 10 2-5h7"/></svg><span class="lbl">Diagnostics</span>
+        </button>
+        <button class="link" id="gear" type="button" title="Settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg><span class="lbl">Settings</span>
+        </button>
       </nav>
     </header>
 
@@ -84,7 +92,7 @@
 
       <div class="cards">
         <article class="card wide">
-          <img src="assets/story.webp" alt="">
+          <figure class="card-media"><img src="assets/story.webp" alt=""></figure>
           <div class="card-body">
             <h3>Bedtime story</h3>
             <p>Long, calm narration that keeps going until you fall asleep.</p>
@@ -93,7 +101,7 @@
         </article>
 
         <article class="card">
-          <img src="assets/focus.webp" alt="">
+          <figure class="card-media"><img src="assets/focus.webp" alt=""></figure>
           <div class="card-body">
             <h3>Focus</h3>
             <p>Kai keeps you company and calls out the time.</p>
@@ -107,7 +115,7 @@
         </article>
 
         <article class="card">
-          <img src="assets/remind.webp" alt="">
+          <figure class="card-media"><img src="assets/remind.webp" alt=""></figure>
           <div class="card-body">
             <h3>Reminder</h3>
             <p>Said out loud when it's time.</p>
@@ -123,7 +131,7 @@
         </article>
 
         <article class="card">
-          <img src="assets/journal.webp" alt="">
+          <figure class="card-media"><img src="assets/journal.webp" alt=""></figure>
           <div class="card-body">
             <h3>Journal</h3>
             <p>A short first-person summary of your day.</p>
