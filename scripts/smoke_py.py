@@ -29,6 +29,8 @@ CEK = [
     ("GET", "/api/memory/context", None, "json"),
     ("GET", "/api/memory/facts?limit=5", None, "json"),
     ("GET", "/api/export", None, "json"),
+    ("GET", "/api/settings", None, "json"),
+    ("POST", "/api/settings", {"values": {"max_tokens": 8000}}, "json"),
     ("POST", "/api/mode", {"mode": "temen"}, "json"),
     ("POST", "/api/greeting", None, "json"),
     ("POST", "/api/tts", {"text": "tes suara"}, "audio"),

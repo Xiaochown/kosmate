@@ -25,6 +25,7 @@ from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from . import memory, persona, pin, stt, tts, voices
+from . import settings as setelan
 from .config import CFG, ROOT
 from .llm import complete, stream_chat
 
@@ -59,7 +60,7 @@ async def extract_facts_bg(conversation: str, source_ep: int | None = None) -> N
         print("[memory] ekstraksi gagal:", e)
 
 
-def _history(session: str, limit: int = 8) -> list[dict]:
+def _history(session: str, limit: int | None = None) -> list[dict]:
     out: list[dict] = []
     for ep in memory.recent(limit=limit, session=session):
         role = "assistant" if ep["role"] != "user" else "user"
@@ -93,6 +94,17 @@ async def health(request: Request):
     )
 
 
+AKHIR_SAH = set('.!?…"\'”’)]}')
+
+
+def _kepotong(t: str) -> bool:
+    """True kalau teks berhenti tanpa tanda akhir kalimat (indikasi stream dipotong)."""
+    t = (t or "").rstrip()
+    if len(t) < 40:
+        return False
+    return t[-1] not in AKHIR_SAH
+
+
 def _dedupe(prev: str, new: str) -> str:
     """Buang tumpang-tindih di awal lanjutan biar gak ada kata dobel."""
     tail = prev[-60:]
@@ -110,8 +122,8 @@ async def chat(request: Request):
         raise HTTPException(400, "message kosong")
 
     ep_id = memory.add_episode("user", message, session)
-    mem_block = memory.context_block(message)
-    messages = [{"role": "system", "content": persona.build_system(mem_block)}] + _history(session)
+    mem_block = memory.context_block(message, max_chars=setelan.get("memory_chars"))
+    messages = [{"role": "system", "content": persona.build_system(mem_block)}] + _history(session, int(setelan.get("history_messages")))
 
     async def gen():
         buf: list[str] = []
@@ -121,14 +133,27 @@ async def chat(request: Request):
             async for delta in stream_chat(messages, info=info):
                 buf.append(delta)
                 yield _sse({"type": "delta", "text": delta})
-            # kena batas token? lanjut otomatis, jangan biarkan kepotong di tengah kalimat
+            # target panjang untuk mode cerita (pengantar tidur)
+            target = int(setelan.get("story_words")) if CFG.persona_mode == "cerita" else 0
+            batas_lanjut = max(CFG.llm_continue_max, 8) if target else CFG.llm_continue_max
             lanjut = 0
-            while info.get("finish_reason") == "length" and lanjut < CFG.llm_continue_max:
+            while lanjut < batas_lanjut and (
+                info.get("finish_reason") == "length"
+                or _kepotong("".join(buf))
+                or (target and len("".join(buf).split()) < target)
+            ):
                 lanjut += 1
-                print(f"[chat] jawaban kena batas token, lanjut otomatis #{lanjut}")
+                print(f"[chat] lanjut #{lanjut}: finish={info.get('finish_reason')} kata={len(''.join(buf).split())} target={target}")
+                sisa = max(0, target - len("".join(buf).split())) if target else 0
+                arahan = (
+                    f"Lanjutkan cerita tepat dari kalimat terakhir. Jangan ulangi, jangan beri pembuka. "
+                    f"Tulis minimal {sisa} kata lagi dengan suasana tenang, lalu tutup cerita dengan penutup yang menenangkan."
+                    if sisa > 100 else
+                    "Lanjutkan tepat dari kata terakhir. Jangan ulangi kalimat sebelumnya, jangan beri pembuka baru."
+                )
                 cont = messages + [
                     {"role": "assistant", "content": "".join(buf)},
-                    {"role": "user", "content": "Lanjutkan tepat dari kata terakhir. Jangan ulangi kalimat sebelumnya, jangan beri pembuka baru."},
+                    {"role": "user", "content": arahan},
                 ]
                 info.clear()
                 pertama = True
@@ -295,12 +320,29 @@ async def get_notes(request: Request):
     return JSONResponse({"notes": memory.list_notes(pinned_only=pinned)})
 
 
+MODE_FILE = CFG.data_dir / "mode.txt"
+MODE_SAH = ("temen", "tutor", "kerja", "cerita")
+
+
+def _baca_mode() -> str:
+    try:
+        m = MODE_FILE.read_text(encoding="utf-8").strip()
+        return m if m in MODE_SAH else "temen"
+    except Exception:  # noqa: BLE001
+        return "temen"
+
+
 async def set_mode(request: Request):
     b = await request.json()
     mode = (b.get("mode") or "temen").lower()
-    if mode not in ("temen", "tutor", "kerja"):
-        raise HTTPException(400, "mode: temen|tutor|kerja")
+    if mode not in MODE_SAH:
+        raise HTTPException(400, "mode: " + "|".join(MODE_SAH))
     CFG.persona_mode = mode
+    try:
+        MODE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        MODE_FILE.write_text(mode + "\n", encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
     return JSONResponse({"mode": mode})
 
 
@@ -326,6 +368,23 @@ async def set_voice(request: Request):
     return JSONResponse({"active": v, "options": voices.available()})
 
 
+async def get_settings(request: Request):
+    return JSONResponse(setelan.skema())
+
+
+async def post_settings(request: Request):
+    body = await request.json()
+    if body.get("preset"):
+        try:
+            val = setelan.preset(str(body["preset"]))
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
+    else:
+        val = setelan.save(body.get("values") or body)
+    print("[settings]", {k: val[k] for k in ("max_tokens", "temperature", "chunk_chars", "tts_parallel")})
+    return JSONResponse({"values": val, "spec": setelan.SPEK})
+
+
 async def export_memory(request: Request):
     return JSONResponse(memory.export_all())
 
@@ -341,6 +400,8 @@ routes = [
     Route("/api/greeting", greeting, methods=["POST"]),
     Route("/api/stt", transcribe, methods=["POST"]),
     Route("/api/mode", set_mode, methods=["POST"]),
+    Route("/api/settings", get_settings),
+    Route("/api/settings", post_settings, methods=["POST"]),
     Route("/api/voice", get_voice),
     Route("/api/voice", set_voice, methods=["POST"]),
     Route("/api/export", export_memory),
@@ -354,6 +415,8 @@ routes = [
     Route("/api/memory/notes", add_note, methods=["POST"]),
     Mount("/", app=StaticFiles(directory=str(WEB_DIR), html=True), name="web"),
 ]
+
+CFG.persona_mode = _baca_mode()
 
 app = Starlette(routes=routes, lifespan=lifespan, exception_handlers={HTTPException: not_found})
 

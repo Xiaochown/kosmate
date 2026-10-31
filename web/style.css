@@ -373,3 +373,7 @@ body[data-state="speaking"] .status { color: var(--ink); }
   .topnav { gap: 10px; }
   .statusline span:last-child { display: none; }
 }
+
+/* preset buttons (Advanced) */
+.preset-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.preset-row .btn { flex: 1; min-width: 104px; font-size: 12.5px; padding: 0 10px; }

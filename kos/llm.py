@@ -15,6 +15,7 @@ from typing import Any, AsyncIterator
 import httpx
 
 from .config import CFG
+from . import settings
 
 _HEADERS = lambda: {
     "Authorization": f"Bearer {CFG.llm_key}",
@@ -77,7 +78,7 @@ async def _request(messages: list[dict], model: str, temperature: float,
         "stream": stream,
     }
     url = f"{CFG.llm_base}/chat/completions"
-    timeout = httpx.Timeout(60.0, connect=15.0, read=90.0)
+    timeout = httpx.Timeout(60.0, connect=15.0, read=float(settings.get("llm_timeout")))
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
         if not stream:
             r = await client.post(url, json=payload, headers=_HEADERS())
@@ -126,7 +127,7 @@ async def _request(messages: list[dict], model: str, temperature: float,
 async def stream_chat(
     messages: list[dict],
     model: str | None = None,
-    temperature: float = 0.75,
+    temperature: float | None = None,
     max_tokens: int | None = None,
     info: dict | None = None,
 ) -> AsyncIterator[str]:
@@ -135,7 +136,8 @@ async def stream_chat(
     `info` (opsional) diisi finish_reason supaya pemanggil tahu kalau jawaban
     kepotong gara-gara batas token, bukan karena modelnya berhenti.
     """
-    mt = max_tokens or CFG.llm_max_tokens
+    mt = max_tokens or settings.get("max_tokens")
+    suhu = settings.get("temperature") if temperature is None else temperature
     models = [model or CFG.llm_model]
     if CFG.llm_fallback and CFG.llm_fallback not in models:
         models.append(CFG.llm_fallback)
@@ -144,7 +146,7 @@ async def stream_chat(
     for m in models:
         got = False
         try:
-            async for chunk in _request(messages, m, temperature, mt, True, info):
+            async for chunk in _request(messages, m, suhu, mt, True, info):
                 got = True
                 yield chunk
             if got:
@@ -153,7 +155,7 @@ async def stream_chat(
             last_err = e
         if not got:
             try:
-                async for chunk in _request(messages, m, temperature, mt, False, info):
+                async for chunk in _request(messages, m, suhu, mt, False, info):
                     yield chunk
                 return
             except Exception as e:  # noqa: BLE001

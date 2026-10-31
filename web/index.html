@@ -26,6 +26,7 @@
       <button class="mode-chip active" data-mode="temen" type="button">Companion</button>
       <button class="mode-chip" data-mode="tutor" type="button">Tutor</button>
       <button class="mode-chip" data-mode="kerja" type="button">Work</button>
+      <button class="mode-chip" data-mode="cerita" type="button">Story</button>
     </div>
 
     <main class="stage">
@@ -131,6 +132,16 @@
           </div>
         </div>
         <p class="tiny">Silence wait 300–60000 (14 s = <code>14000</code>): how long it waits before assuming you are done. Post-speech delay 200–15000: raise it if the mic picks up its own voice.</p>
+      </section>
+
+      <section class="group">
+        <h3 class="group-title">Advanced</h3>
+        <div class="preset-row">
+          <button class="btn preset" data-preset="story" type="button">Bedtime story</button>
+          <button class="btn preset" data-preset="chat" type="button">Fast chat</button>
+          <button class="btn preset" data-preset="default" type="button">Reset</button>
+        </div>
+        <div id="advFields"></div>
       </section>
 
       <section class="group">

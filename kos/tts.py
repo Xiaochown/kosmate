@@ -12,7 +12,7 @@ from typing import AsyncIterator
 import httpx
 
 from .config import CFG
-from . import voices
+from . import settings, voices
 
 _EMOJI = re.compile(
     "[" "\U0001F300-\U0001FAFF" "\U00002700-\U000027BF" "\U0001F1E6-\U0001F1FF" "\U00002600-\U000026FF" "]+"
@@ -28,7 +28,7 @@ def clean_for_speech(text: str) -> str:
     t = re.sub(r"[*_#>|~]+", " ", t)
     t = _EMOJI.sub(" ", t)
     t = re.sub(r"\s+", " ", t).strip()
-    return t[:4000]
+    return t[: int(settings.get("tts_max_chars"))]
 
 
 def _cache_path(text: str, voice: str, rate: str, pitch: str) -> "object":
@@ -58,7 +58,7 @@ async def _fish(text: str, speed: float = 1.0, ref: str = "") -> AsyncIterator[b
         "Content-Type": "application/json",
         "model": CFG.fish_model,
     }
-    timeout = httpx.Timeout(60.0, connect=15.0, read=60.0)
+    timeout = httpx.Timeout(60.0, connect=15.0, read=float(settings.get("tts_timeout")))
     async with httpx.AsyncClient(timeout=timeout) as client:
         async with client.stream("POST", "https://api.fish.audio/v1/tts", json=body, headers=headers) as r:
             if r.status_code >= 400:

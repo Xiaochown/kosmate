@@ -30,6 +30,7 @@ const S = {
   cooldownMs: 900,
   speechChunk: "block", // "block" = satu blok utuh (intonasi nyambung) | "sentence" = per kalimat
   chunkChars: 400, // potongan maksimum; potongan berikutnya di-prefetch saat yang ini diputar
+  ttsParallel: 2,
   listenTimer: null,
   stopRequested: false,
   cancelSpeech: null,
@@ -108,7 +109,8 @@ let ttsInFlight = 0;
 const ttsWaiting = [];
 
 function mulaiFetch(job) {
-  if (ttsInFlight >= 2) {
+  const batas = Math.max(1, Math.min(4, Number(S.ttsParallel) || 2));
+  if (ttsInFlight >= batas) {
     ttsWaiting.push(job);
     return;
   }
@@ -629,6 +631,9 @@ function bind() {
       setState("idle");
     }
   };
+  document.querySelectorAll(".preset").forEach((b) => {
+    b.onclick = () => applyPreset(b.dataset.preset || "default");
+  });
   $("setSpeechChunk").onchange = (e) => {
     S.speechChunk = e.target.value === "sentence" ? "sentence" : "block";
     saveSettings();
@@ -741,6 +746,79 @@ async function pilihVoice(key) {
   } catch (e) {
     diag("tts", "gagal ganti voice: " + e.message);
     setStatus("Could not change voice: " + e.message);
+  }
+}
+
+/* ---------------- setelan runtime dari server ---------------- */
+function applyServerValues(v) {
+  if (!v) return;
+  if (v.chunk_chars) S.chunkChars = Number(v.chunk_chars);
+  if (v.tts_parallel) S.ttsParallel = Number(v.tts_parallel);
+}
+
+function renderAdv(j) {
+  const box = $("advFields");
+  if (!box) return;
+  const vals = j.values || {};
+  box.innerHTML = Object.entries(j.spec || {})
+    .map(([k, s]) => {
+      return (
+        '<div class="field">' +
+        '<label for="adv_' + k + '">' + s.label + "</label>" +
+        '<input id="adv_' + k + '" data-key="' + k + '" type="number" inputmode="decimal"' +
+        ' min="' + s.min + '" max="' + s.max + '" step="' + s.step + '" value="' + vals[k] + '">' +
+        '<p class="tiny">' + (s.hint || "") + "</p>" +
+        "</div>"
+      );
+    })
+    .join("");
+  box.querySelectorAll("input[data-key]").forEach((inp) => {
+    inp.onchange = () => postSettings({ [inp.dataset.key]: inp.value });
+  });
+}
+
+async function postSettings(values) {
+  try {
+    const r = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ values }),
+    });
+    if (!r.ok) throw new Error("server " + r.status);
+    const j = await r.json();
+    applyServerValues(j.values);
+    renderAdv(j);
+    setStatus("Settings saved");
+    diag("tts", "settings: " + JSON.stringify(values));
+  } catch (e) {
+    setStatus("Could not save settings: " + e.message);
+  }
+}
+
+async function applyPreset(name) {
+  try {
+    const r = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ preset: name }),
+    });
+    if (!r.ok) throw new Error("server " + r.status);
+    const j = await r.json();
+    applyServerValues(j.values);
+    renderAdv(j);
+    setStatus(name === "story" ? "Bedtime story ready — tokens 16000, 3× parallel" : "Preset: " + name);
+  } catch (e) {
+    setStatus("Could not apply preset: " + e.message);
+  }
+}
+
+async function loadServerSettings() {
+  try {
+    const j = await (await fetch("/api/settings")).json();
+    applyServerValues(j.values);
+    renderAdv(j);
+  } catch (e) {
+    diag("tts", "settings gagal dimuat: " + e.message);
   }
 }
 
@@ -907,6 +985,7 @@ async function boot() {
     if ($("brandSub")) $("brandSub").textContent = engine;
     S.serverInfo = { voice: h.tts_voice, rate: h.tts_rate, strict: h.tts_strict, fish: h.fish_key, ref: h.fish_ref, engine, active: h.voice };
     await loadVoices();
+    await loadServerSettings();
     // kalau voice aktif berbasis Fish, matikan cadangan suara HP biar timbre gak ganti
     if (h.voice && h.voice.engine === "fish") {
       S.browserFallback = false;

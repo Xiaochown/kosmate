@@ -1,0 +1,12 @@
+{
+  "max_tokens": 8000,
+  "temperature": 0.75,
+  "llm_timeout": 120,
+  "tts_timeout": 120,
+  "tts_max_chars": 20000,
+  "chunk_chars": 400,
+  "tts_parallel": 2,
+  "history_messages": 8,
+  "story_words": 1500,
+  "memory_chars": 1400
+}
