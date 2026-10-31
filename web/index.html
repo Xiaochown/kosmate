@@ -3,10 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#8a5a33">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="assets/icon-192.png">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
   <title>Companion</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -26,6 +29,11 @@
       </nav>
     </header>
 
+    <div class="banner">
+      <img src="assets/banner.webp" alt="">
+      <span class="banner-tag">your room · at dusk</span>
+    </div>
+
     <div class="mode-row" role="group" aria-label="Conversation mode">
       <button class="mode-chip active" data-mode="temen" type="button">Companion</button>
       <button class="mode-chip" data-mode="tutor" type="button">Tutor</button>
@@ -37,10 +45,7 @@
       <button class="orb" id="orb" type="button" aria-label="Start or stop speaking">
         <span class="orb-ring" aria-hidden="true"></span>
         <span class="orb-core" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-            <rect x="9" y="3.5" width="6" height="10.5" rx="3"/>
-            <path d="M6 11.5a6 6 0 0 0 12 0M12 17.5V21"/>
-          </svg>
+          <img class="mascot" src="assets/mascot.webp" alt="">
         </span>
       </button>
 
