@@ -49,12 +49,8 @@ if (command -v ss >/dev/null && ss -ltn 2>/dev/null | grep -q ":$PORT ") || (com
 else
   no "port $PORT kosong (server belum jalan)"
 fi
-if command -v curl >/dev/null; then
-  H="$(curl -s -m 6 "http://127.0.0.1:$PORT/api/health" 2>/dev/null)"
-  if [ -n "$H" ]; then ok "health: $H"; else no "health gak nyahut"; fi
-else
-  no "curl gak ada (pkg install curl)"
-fi
+H="$(python3 scripts/_health.py "$PORT" 2>/dev/null)"
+if [ -n "$H" ]; then ok "health: $H"; else no "health gak nyahut (cek: tail -20 data/boot.log)"; fi
 
 line "5. memori"
 if [ -f data/kosmate.db ]; then

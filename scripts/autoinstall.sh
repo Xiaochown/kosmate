@@ -169,16 +169,17 @@ fi
 head_ "5/6 nyalain server"
 PORT="$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2)"; PORT="${PORT:-8080}"
 if [ "${KOSMATE_NO_START:-0}" != "1" ]; then
-  if curl -s -m 3 "http://127.0.0.1:$PORT/api/health" >/dev/null 2>&1; then
+  if "$PYBIN" scripts/_health.py "$PORT" >/dev/null 2>&1; then
     ok "server sudah jalan di port $PORT"
   else
     command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock
     nohup bash run.sh "$PORT" > data/boot.log 2>&1 &
     for i in $(seq 1 30); do
       sleep 1
-      if curl -s -m 3 "http://127.0.0.1:$PORT/api/health" >/dev/null 2>&1; then break; fi
+      if "$PYBIN" scripts/_health.py "$PORT" >/dev/null 2>&1; then break; fi
     done
-    if H="$(curl -s -m 5 "http://127.0.0.1:$PORT/api/health" 2>/dev/null)"; then
+    H="$("$PYBIN" scripts/_health.py "$PORT" 2>/dev/null || true)"
+    if [ -n "$H" ]; then
       ok "server hidup: $H"
     else
       warn "server belum nyahut. 20 baris terakhir data/boot.log:"
