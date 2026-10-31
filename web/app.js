@@ -41,8 +41,8 @@ function loadSettings() {
     Object.assign(S, {
       autoListen: !!s.autoListen,
       speakReply: s.speakReply !== false,
-      silenceMs: Number(s.silenceMs || 900),
-      cooldownMs: Number(s.cooldownMs || 900),
+      silenceMs: Math.max(300, Math.min(60000, Number(s.silenceMs || 900))),
+      cooldownMs: Math.max(200, Math.min(15000, Number(s.cooldownMs || 900))),
       voice: s.voice || "id-ID-GadisNeural",
       ttsMode: s.ttsMode || "auto",
       tempo: s.tempo || "-20%",
@@ -583,15 +583,16 @@ function bind() {
   $("diagTtsTest").onclick = runTtsTest;
   $("diagMicTest").onclick = testMic;
   $("setCooldown").onchange = (e) => {
-    const n = Math.max(200, Math.min(5000, parseInt(e.target.value || "900", 10) || 900));
+    const n = Math.max(200, Math.min(15000, parseInt(e.target.value || "900", 10) || 900));
     S.cooldownMs = n;
     e.target.value = String(n);
     saveSettings();
   };
   $("setSpeak").onclick = () => { S.speakReply = !S.speakReply; saveSettings(); syncToggles(); };
   $("setSilence").onchange = (e) => {
-    const n = Math.max(300, Math.min(4000, parseInt(e.target.value || "900", 10) || 900));
+    const n = Math.max(300, Math.min(60000, parseInt(e.target.value || "900", 10) || 900));
     S.silenceMs = n; e.target.value = String(n); saveSettings();
+    setStatus("jeda dengerin: <strong>" + n + " ms</strong> (" + (n / 1000).toFixed(1) + " detik)");
   };
 
   document.addEventListener("visibilitychange", async () => {
