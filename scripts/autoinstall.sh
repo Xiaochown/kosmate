@@ -181,7 +181,11 @@ if [ "${KOSMATE_NO_START:-0}" != "1" ]; then
     if H="$(curl -s -m 5 "http://127.0.0.1:$PORT/api/health" 2>/dev/null)"; then
       ok "server hidup: $H"
     else
-      warn "server belum nyahut. cek: tail -30 data/boot.log"
+      warn "server belum nyahut. 20 baris terakhir data/boot.log:"
+      echo "-----------------------------------------"
+      tail -n 20 data/boot.log 2>/dev/null || echo "(log kosong)"
+      echo "-----------------------------------------"
+      echo "   coba: bash scripts/restart.sh"
     fi
   fi
   command -v termux-open-url >/dev/null 2>&1 && termux-open-url "http://127.0.0.1:$PORT" >/dev/null 2>&1 &
