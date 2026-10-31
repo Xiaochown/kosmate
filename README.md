@@ -73,6 +73,21 @@ unzip -o ~/Download/kosmate.zip -d ~/
 bash ~/kosmate/scripts/autoinstall.sh
 ```
 
+**Kalau `curl` / `git` di Termux rusak** (mis. `cannot locate symbol ngtcp2...`,
+`pkg` gagal karena dia ngecek mirror pakai curl) — pakai bootstrap lewat python,
+tanpa curl dan tanpa git sama sekali:
+
+```bash
+apt update && apt full-upgrade -y   # benerin lib yang tidak sinkron (ini yang bikin curl mati)
+python -m ensurepip --upgrade       # benerin pip
+```
+
+lalu jalankan installer tanpa curl:
+
+```bash
+python -c "import urllib.request as u,os;d=u.urlopen(u.Request('https://api.github.com/repos/Xiaochown/kosmate/contents/install.sh',headers={'Accept':'application/vnd.github.raw','User-Agent':'kosmate'}),timeout=60).read();p=os.path.expanduser('~/kos.sh');open(p,'wb').write(d);os.environ['KOSMATE_FORCE_ZIP']='1';os.execvp('bash',['bash',p])"
+```
+
 **Jalur manual (kalau mau paham tiap langkah):**
 
 ```bash

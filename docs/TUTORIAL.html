@@ -424,6 +424,24 @@ ls ~/.termux/boot/</pre><button class="copy">copy</button></div>
     <h2>Gejala → sebab → obat</h2>
     <p class="sub">Tap buat buka. 90% masalah ada di lima pertama.</p>
 
+    <details><summary>curl error: “cannot locate symbol ngtcp2_conn_get_tls_early_data_rejected2”</summary><div class="inner">
+      <p><strong>Penyebab:</strong> Termux setengah ke-upgrade — <code>libcurl.so</code> versi baru minta simbol dari <code>libngtcp2</code> yang masih versi lama. Efeknya berantai: <code>curl</code> mati → <code>git clone</code> mati → <code>pkg</code> juga mati (pkg ngecek mirror pakai curl) → pip ikut rusak.</p>
+      <p><strong>Obat:</strong> jangan pakai <code>pkg</code> (dia butuh curl). Pakai apt langsung, ini yang disarankan pesan error-nya sendiri:</p>
+      <div class="code"><pre>apt update && apt full-upgrade -y
+python -m ensurepip --upgrade
+curl -sI https://github.com | head -1   <span class="c"># harus HTTP/2 200</span>
+git --version
+python -m pip --version</pre><button class="copy">copy</button></div>
+      <p>Kalau apt juga bermasalah, paksa reinstall paket yang bentrok:
+      <code>apt install --reinstall -y libngtcp2 libngtcp2-crypto-ossl curl</code></p>
+    </div></details>
+
+    <details><summary>FileNotFoundError: “/tmp/kos.sh” waktu bootstrap</summary><div class="inner">
+      <p><strong>Penyebab:</strong> Termux <strong>tidak punya folder <code>/tmp</code></strong> (yang ada <code>$PREFIX/tmp</code> dan <code>$TMPDIR</code>). Script yang menulis ke <code>/tmp</code> akan gagal.</p>
+      <p><strong>Obat:</strong> pakai <code>~/</code> atau <code>$TMPDIR</code>. Contoh bootstrap lewat python yang benar:</p>
+      <div class="code"><pre>python -c "import urllib.request as u,os;d=u.urlopen(u.Request('https://api.github.com/repos/Xiaochown/kosmate/contents/install.sh',headers={'Accept':'application/vnd.github.raw','User-Agent':'kosmate'}),timeout=60).read();p=os.path.expanduser('~/kos.sh');open(p,'wb').write(d);os.environ['KOSMATE_FORCE_ZIP']='1';os.execvp('bash',['bash',p])"</pre><button class="copy">copy</button></div>
+    </div></details>
+
     <details><summary>Error “bad interpreter: python3.13” waktu install</summary><div class="inner">
       <p><strong>Penyebab:</strong> lu pernah upgrade paket <code>python</code> di Termux; file <code>pip</code> lama masih nunjuk ke python3.13 yang sudah dihapus.</p>
       <div class="code"><pre>python -m ensurepip --upgrade
