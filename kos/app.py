@@ -24,7 +24,7 @@ from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from . import memory, persona, stt, tts, voices
+from . import memory, persona, pin, stt, tts, voices
 from .config import CFG, ROOT
 from .llm import complete, stream_chat
 
@@ -322,3 +322,61 @@ routes = [
 ]
 
 app = Starlette(routes=routes, lifespan=lifespan, exception_handlers={HTTPException: not_found})
+
+
+class PinGate:
+    """Gerbang PIN untuk akses lewat tunnel publik.
+
+    - lokal (127.0.0.1) selalu lolos, biar tetap gampang dipakai di HP sendiri
+    - kalau data/pin.txt belum ada, gerbang mati total
+    """
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or not pin.aktif():
+            return await self.inner(scope, receive, send)
+
+        client = (scope.get("client") or ("", 0))[0]
+        if client in ("127.0.0.1", "::1", "localhost"):
+            return await self.inner(scope, receive, send)
+
+        from urllib.parse import parse_qs
+
+        qs = parse_qs(scope.get("query_string", b"").decode("latin-1"))
+        tebakan = (qs.get("pin") or [None])[0]
+        cookie = dict(scope.get("headers") or []).get(b"cookie", b"").decode("latin-1")
+        punya_cookie = ("kosmate_pin=" + pin.pin()) in cookie
+
+        if pin.cocok(tebakan):
+            if tebakan:
+                await send({
+                    "type": "http.response.start",
+                    "status": 303,
+                    "headers": [
+                        (b"location", b"/"),
+                        (b"set-cookie", f"kosmate_pin={pin.pin()}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000".encode()),
+                    ],
+                })
+                await send({"type": "http.response.body", "body": b""})
+                return
+            return await self.inner(scope, receive, send)
+
+        if punya_cookie:
+            return await self.inner(scope, receive, send)
+
+        body = pin.form("PIN salah, coba lagi" if tebakan else "").encode()
+        await send({
+            "type": "http.response.start",
+            "status": 401,
+            "headers": [
+                (b"content-type", b"text/html; charset=utf-8"),
+                (b"content-length", str(len(body)).encode()),
+                (b"cache-control", b"no-store"),
+            ],
+        })
+        await send({"type": "http.response.body", "body": body})
+
+
+app = PinGate(app)
