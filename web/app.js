@@ -10,7 +10,7 @@ const S = {
   silenceMs: 900,
   voice: "id-ID-GadisNeural",
   ttsMode: "auto",
-  tempo: "-12%",
+  tempo: "-20%",
   browserFallback: true,
   session: "live-" + Date.now(),
   replyText: "",
@@ -38,7 +38,7 @@ function loadSettings() {
       silenceMs: Number(s.silenceMs || 900),
       voice: s.voice || "id-ID-GadisNeural",
       ttsMode: s.ttsMode || "auto",
-      tempo: s.tempo || "-12%",
+      tempo: s.tempo || "-20%",
       browserFallback: s.browserFallback !== false,
     });
   } catch (e) {}
@@ -596,7 +596,7 @@ function renderDiag() {
     ? (window.speechSynthesis.getVoices() || []).find((v) => /^id/i.test(v.lang))
     : null;
   const rows = [
-    ["Suara dipakai", (S.serverInfo && S.serverInfo.engine ? S.serverInfo.engine : "belum tahu") + " · tempo " + ((S.serverInfo && S.serverInfo.rate) || "-12%"), true],
+    ["Suara dipakai", (S.serverInfo && S.serverInfo.engine ? S.serverInfo.engine : "belum tahu") + " · tempo " + ((S.serverInfo && S.serverInfo.rate) || "-20%"), true],
     ["Cadangan suara HP", S.browserFallback ? "aktif (bisa ganti timbre kalau server gagal)" : "mati (suara tetap satu)", true],
     ["STT (Web Speech)", hasSR ? "ada" : "TIDAK ADA → pakai Chrome, bukan Fully Kiosk", hasSR],
     ["TTS server", S.diag.tts || "belum dites", !!S.diag.tts && !/GAGAL|gagal/i.test(S.diag.tts)],

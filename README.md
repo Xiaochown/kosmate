@@ -155,12 +155,16 @@ dan itu yang bikin suara lompat-lompat. Jadi:
 - **Dengan Fish Audio**: pilih voice komunitas Indonesia lalu kunci:
 
 ```bash
-python scripts/fish_voice_set.py --list        # kandidat perempuan Indonesia
+python scripts/fish_voice_set.py --list        # kandidat voice Indonesia
 python scripts/fish_voice_set.py <model_id>    # set + tes suara langsung
 ```
 
-Rekomendasi: `25bdf652971e49b1b089cecfd4b1f943` (perempuan muda, tenang, conversational).
-Alternatif: `970f7148…` (halus/smooth), `3095f8e1…` (rame/energik).
+Default: **Miyaa** `37df5d3ba8c74b90b9aa1c6fa646823c` (perempuan muda, cheerful, friendly).
+Alternatif: **Prabowo** `b8d594e696694b499aa12e32d0c1b618` (laki-laki, dalam, tegas),
+`25bdf652…` (tenang/conversational), `970f7148…` (halus/smooth).
+
+Tempo default **0.8x** (`TTS_RATE=-20%`, pitch `-2Hz`): `-30%` = 0.7x, `-12%` = 0.88x, `+0%` = 1x.
+Bisa diganti tanpa edit file dari ⚙ → Tempo bicara.
 
 Di HP, "Cadangan suara HP" (speechSynthesis) otomatis dimatikan kalau voice Fish terkunci —
 biar saat server gagal Kosmate diam, bukan ganti timbre.

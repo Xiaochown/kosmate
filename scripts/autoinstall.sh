@@ -109,6 +109,9 @@ if [ "${TTS_PROVIDER:-}" = "fish" ] || [ -n "${KOSMATE_FISH_KEY:-}" ]; then :; e
     read -rs FISH_TMP || true; printf '\n'
     if [ -n "${FISH_TMP:-}" ]; then
       export KOSMATE_FISH_KEY="$FISH_TMP" KOSMATE_TTS=fish KOSMATE_FISH_MODEL=s2.1-pro-free
+      printf '   Voice Fish [Enter = Miyaa]: '
+      read -r VOICE_TMP || true
+      export KOSMATE_FISH_REF="${VOICE_TMP:-37df5d3ba8c74b90b9aa1c6fa646823c}"
     fi
   fi
 fi

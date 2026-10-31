@@ -20,15 +20,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ENV = ROOT / ".env"
 
-# hasil pencarian pasar voice Fish (language=id, tag=female), diurut relevansi
+# hasil pencarian pasar voice Fish (language=id), urut prioritas
+# DEFAULT: Miyaa (perempuan muda, cheerful, friendly)
 KANDIDAT = [
-    ("25bdf652971e49b1b089cecfd4b1f943", "indonesia — perempuan muda, tenang, conversational  ← rekomendasi"),
+    ("37df5d3ba8c74b90b9aa1c6fa646823c", "Miyaa — perempuan muda, cheerful, friendly  ← DEFAULT"),
+    ("b8d594e696694b499aa12e32d0c1b618", "Prabowo — laki-laki, dalam, tegas (143rb pemakaian)"),
+    ("25bdf652971e49b1b089cecfd4b1f943", "indonesia — perempuan muda, tenang, conversational"),
     ("970f714811ad4dd2b7bc2ffae8627901", "drama Indonesia — halus, smooth, kalem"),
     ("3095f8e1d1fa4b82acaa8aca720a7f83", "Vestia Zeta — rame/energik, gaya VTuber"),
-    ("e2c2e22df7c04fcaa5b0f136bce7d7d8", "Isam shawali — warm, calm, gentle"),
     ("d0b314896b3a479aa5cb04c29a8e9e25", "Narator Berita Olahraga — jelas, profesional"),
-    ("03931f053cb0445182f4709598f96186", "suarane sopo kih — narration, crisp"),
 ]
+DEFAULT_VOICE = KANDIDAT[0][0]
 
 
 def env_get(key: str) -> str:

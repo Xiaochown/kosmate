@@ -44,7 +44,7 @@ class Cfg:
     fish_ref = get("FISH_REFERENCE_ID")
     # satu suara saja, dikunci. Gadis = satu-satunya voice perempuan id-ID di edge-tts
     tts_voice = get("TTS_VOICE", "id-ID-GadisNeural")
-    tts_rate = get("TTS_RATE", "-12%")
+    tts_rate = get("TTS_RATE", "-20%")
     tts_pitch = get("TTS_PITCH", "-2Hz")
     tts_volume = get("TTS_VOLUME", "+0%")
     tts_strict = get("TTS_STRICT", "1") == "1"
