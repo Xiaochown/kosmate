@@ -174,6 +174,24 @@ biar saat server gagal Kosmate diam, bukan ganti timbre.
 
 
 
+## Anti-potong: mic nunggu jawaban selesai
+
+Masalah lama: mic dinyalakan ulang tiap habis **satu kalimat**, bukan setelah seluruh
+jawaban. Akibatnya mic mendengar suara Kosmate sendiri di jeda antar-kalimat dan
+jawabannya kepotong. Yang dipakai sekarang:
+
+- **`speechQueue`** — mic tidak boleh nyala selama masih ada kalimat yang belum diucapkan
+  (`heartbeat` juga ikut ngecek ini, jadi tidak ada jalur yang "nyelinap")
+- **`S.cooldownMs`** (default 900 ms, bisa diatur di ⚙) — jeda setelah kalimat terakhir,
+  kasih waktu gema speaker hilang
+- **`looksLikeEcho()`** — transkrip yang ≥60% kata-katanya sama dengan yang barusan
+  diucapkan dianggap gema dan **dibuang** (bukan dikirim sebagai pesan user)
+- **`stopSpeaking()`** — ketuk orb saat Kai ngomong = potong seluruh antrean
+  (pakai generation counter, jadi kalimat sisa tidak ikut bunyi)
+
+Konsekuensi: barge-in lewat suara memang sengaja dimatikan. Kalau mau memotong, ketuk orb.
+
+
 ## Budget latency (target biar kerasa "hidup")
 
 | Tahap | Waktu realistis | Cara nurunin |

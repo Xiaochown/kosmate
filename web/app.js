@@ -26,7 +26,13 @@ const S = {
   busy: false,
   diag: {},
   recErrors: 0,
+  lastSpoken: "",
+  cooldownMs: 900,
+  listenTimer: null,
+  stopRequested: false,
+  cancelSpeech: null,
 };
+try { window.__S = S; } catch (e) {}
 
 /* ---------------- settings ---------------- */
 function loadSettings() {
@@ -36,6 +42,7 @@ function loadSettings() {
       autoListen: !!s.autoListen,
       speakReply: s.speakReply !== false,
       silenceMs: Number(s.silenceMs || 900),
+      cooldownMs: Number(s.cooldownMs || 900),
       voice: s.voice || "id-ID-GadisNeural",
       ttsMode: s.ttsMode || "auto",
       tempo: s.tempo || "-20%",
@@ -47,7 +54,7 @@ function saveSettings() {
   localStorage.setItem(LS, JSON.stringify({
     autoListen: S.autoListen, speakReply: S.speakReply,
     silenceMs: S.silenceMs, voice: S.voice, ttsMode: S.ttsMode,
-    tempo: S.tempo, browserFallback: S.browserFallback,
+    tempo: S.tempo, browserFallback: S.browserFallback, cooldownMs: S.cooldownMs,
   }));
 }
 
@@ -83,7 +90,8 @@ function clearReply() { $("reply").classList.remove("show"); }
 
 /* ---------------- TTS ---------------- */
 let speakChain = Promise.resolve();
-let playing = false;
+let speechQueue = 0; // jumlah kalimat yang belum selesai diucapkan
+let speechGen = 0; // naik setiap kali user memotong; antrean lama jadi basi
 let currentAudio = null;
 
 function speakable(t) {
@@ -93,7 +101,29 @@ function speakable(t) {
 function enqueueSpeech(text) {
   const t = speakable(text);
   if (!t || !S.speakReply) return;
-  speakChain = speakChain.then(() => speakOne(t)).catch(() => {});
+  speechQueue++;
+  const gen = speechGen;
+  speakChain = speakChain
+    .then(() => {
+      if (gen !== speechGen) return; // sudah dipotong, jangan diucapkan
+      return speakOne(t);
+    })
+    .catch(() => {});
+}
+
+/* deteksi kalau yang ditangkap mic sebenarnya suara Kosmate sendiri */
+function normText(s) {
+  return (s || "").toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+function looksLikeEcho(text) {
+  const said = normText(text);
+  const last = normText(S.lastSpoken || "");
+  if (said.length < 6 || !last) return false;
+  if (last.includes(said)) return true;
+  const words = said.split(" ").filter(Boolean);
+  if (words.length < 2) return false;
+  const hit = words.filter((w) => last.includes(w)).length;
+  return hit / words.length >= 0.6;
 }
 
 /* log diagnosa: kelihatan di panel Diagnostik, bukan cuma console */
@@ -169,11 +199,41 @@ async function speakOne(text) {
     diag("tts", "SEMUA jalur suara gagal: " + e.message);
     setStatus("suara gak keluar — buka ⚙ → Diagnostik");
   } finally {
-    if (!playing) {
-      setState(S.listening ? "listening" : "idle");
-      if (S.autoListen) armListening();
+    speechQueue = Math.max(0, speechQueue - 1);
+    if (speechQueue === 0) {
+      // seluruh jawaban sudah selesai diucapkan -> baru boleh dengar lagi
+      S.speaking = false;
+      S.lastSpoken = speakable(S.replyText || "");
+      setState(S.autoListen ? "listening" : "idle");
+      if (S.autoListen) scheduleListen();
     }
   }
+}
+
+/* jeda sebelum mic nyala lagi: kasih waktu gema speaker hilang */
+function scheduleListen() {
+  clearTimeout(S.listenTimer);
+  const wait = Math.max(200, Number(S.cooldownMs) || 900);
+  S.listenTimer = setTimeout(() => {
+    if (!S.autoListen || S.speaking || S.busy || speechQueue > 0) return;
+    startListening(true);
+  }, wait);
+}
+
+/* hentikan semua ucapan (dipakai kalau user ketuk orb saat Kai ngomong) */
+function stopSpeaking() {
+  speechGen++; // semua kalimat di antrean lama dianggap basi
+  if (S.cancelSpeech) {
+    try { S.cancelSpeech(); } catch (e) {}
+  }
+  if ("speechSynthesis" in window) {
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+  }
+  speechQueue = 0;
+  speakChain = Promise.resolve();
+  S.speaking = false;
+  currentAudio = null;
+  setState("idle");
 }
 
 function playBlob(blob) {
@@ -187,11 +247,13 @@ function playBlob(blob) {
     const finish = (err) => {
       if (settled) return;
       settled = true;
+      S.cancelSpeech = null;
       URL.revokeObjectURL(url);
       S.speaking = false;
       currentAudio = null;
       err ? reject(err) : resolve();
     };
+    S.cancelSpeech = () => finish(new Error("dibatalkan"));
     a.onended = () => finish(null);
     a.onerror = () => finish(new Error("audio gagal diputar (autoplay diblok? tap layar)"));
     a.play().catch((e) => finish(new Error("play() ditolak: " + (e.name || e.message))));
@@ -329,6 +391,11 @@ function initRecognition() {
     S.finalText = "";
     if (said) {
       showLive("", "");
+      if (looksLikeEcho(said)) {
+        diag("stt", "abaikan suara sendiri: " + said.slice(0, 40));
+        if (S.autoListen) scheduleListen();
+        return;
+      }
       S.recErrors = 0;
       sendMessage(said);
     } else if (S.autoListen && !S.speaking && !S.busy) {
@@ -343,19 +410,15 @@ function initRecognition() {
 
 /* nyalain lagi pendengar otomatis dengan jeda yang makin panjang kalau error */
 function armListening() {
-  if (!S.rec || S.speaking || S.busy || S.listening) return;
-  clearTimeout(S.rearmTimer);
-  const delay = Math.min(6000, 400 * Math.pow(1.5, Math.min(S.recErrors || 0, 6)));
-  S.rearmTimer = setTimeout(() => {
-    if (!S.autoListen || S.speaking || S.busy || S.listening) return;
-    startListening(true);
-  }, delay);
+  if (!S.rec || S.speaking || S.busy || S.listening || speechQueue > 0) return;
+  scheduleListen();
 }
 
 /* heartbeat: kalau karena alasan apa pun pendengar mati diam-diam, nyalain lagi */
 function heartbeat() {
   if (!S.autoListen || !S.rec) return;
   if (S.listening || S.speaking || S.busy) return;
+  if (speechQueue > 0) return; // masih ada kalimat yang belum selesai diucapkan
   if (S.state === "listening") return;
   diag("stt", "heartbeat: pendengar mati, dinyalakan ulang");
   startListening(true);
@@ -424,7 +487,11 @@ function pickMime() {
 function bind() {
   $("orb").onclick = () => {
     unlockAudio();
-    if (S.speaking && currentAudio) { currentAudio.pause(); currentAudio = null; S.speaking = false; setState("idle"); return; }
+    if (S.speaking || speechQueue > 0) {
+      stopSpeaking();
+      setStatus("dipotong. ketuk lagi kalau mau ngomong");
+      return;
+    }
     if (S.listening) stopRecognition(false);
     else startListening();
   };
@@ -515,6 +582,12 @@ function bind() {
   };
   $("diagTtsTest").onclick = runTtsTest;
   $("diagMicTest").onclick = testMic;
+  $("setCooldown").onchange = (e) => {
+    const n = Math.max(200, Math.min(5000, parseInt(e.target.value || "900", 10) || 900));
+    S.cooldownMs = n;
+    e.target.value = String(n);
+    saveSettings();
+  };
   $("setSpeak").onclick = () => { S.speakReply = !S.speakReply; saveSettings(); syncToggles(); };
   $("setSilence").onchange = (e) => {
     const n = Math.max(300, Math.min(4000, parseInt(e.target.value || "900", 10) || 900));
@@ -535,6 +608,7 @@ function syncToggles() {
   s.innerHTML = '<span class="dot' + (S.speakReply ? " ok" : "") + '"></span>' + (S.speakReply ? "aktif" : "nonaktif");
   $("setVoice").value = S.voice;
   $("setSilence").value = String(S.silenceMs);
+  if ($("setCooldown")) $("setCooldown").value = String(S.cooldownMs);
   if ($("setTtsMode")) $("setTtsMode").value = S.ttsMode;
   if ($("setTempo")) $("setTempo").value = S.tempo;
   const fb = $("setFallback");
