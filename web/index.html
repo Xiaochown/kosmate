@@ -75,11 +75,19 @@
     </div>
 
     <div class="field">
-      <label>Suara</label>
+      <label>Suara (satu, dikunci)</label>
       <select id="setVoice">
-        <option value="id-ID-GadisNeural">Gadis (Indonesia, hangat)</option>
-        <option value="id-ID-ArdiNeural">Ardi (Indonesia, maskulin)</option>
-        <option value="en-US-AvaMultilingualNeural">Ava (multibahasa)</option>
+        <option value="id-ID-GadisNeural">Gadis — perempuan Indonesia (edge)</option>
+      </select>
+      <p class="tiny" style="margin-top:6px">Kalau pakai Fish Audio, voice dipilih dari server: <code>python scripts/fish_voice_set.py --list</code></p>
+    </div>
+
+    <div class="field">
+      <label>Tempo bicara</label>
+      <select id="setTempo">
+        <option value="-20%">pelan &amp; halus</option>
+        <option value="-12%">pelan (disarankan)</option>
+        <option value="+0%">normal</option>
       </select>
     </div>
 
@@ -91,6 +99,12 @@
         <option value="browser">suara HP saja (offline, tanpa internet)</option>
       </select>
     </div>
+
+    <div class="row">
+      <span>Cadangan suara HP</span>
+      <button class="pill on" id="setFallback"><span class="dot ok"></span>aktif</button>
+    </div>
+    <p class="tiny" style="margin:-4px 0 10px">Kalau dimatikan: saat server TTS gagal, Kosmate diam (bukan ganti suara). Suara tetap satu.</p>
 
     <div class="row">
       <span>Dengerin otomatis</span>

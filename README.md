@@ -144,6 +144,29 @@ ada contoh output yang benar dan bagian troubleshooting.
 | DELETE | `/api/memory/facts/{id}` | hapus fakta (dia langsung lupa) |
 | GET | `/api/export` | backup seluruh memori (JSON) |
 
+## Suara: satu voice, dikunci
+
+Kosmate sengaja **cuma punya satu suara**. Pindah provider saat gagal = pindah timbre,
+dan itu yang bikin suara lompat-lompat. Jadi:
+
+- `TTS_STRICT=1` (default) — tidak ada perpindahan provider diam-diam
+- `TTS_RATE=-12%` + `TTS_PITCH=-2Hz` — tempo pelan & halus (bisa `-20%` / `+0%` di Pengaturan)
+- **Tanpa Fish**: `id-ID-GadisNeural` (satu-satunya voice perempuan Indonesia di edge-tts)
+- **Dengan Fish Audio**: pilih voice komunitas Indonesia lalu kunci:
+
+```bash
+python scripts/fish_voice_set.py --list        # kandidat perempuan Indonesia
+python scripts/fish_voice_set.py <model_id>    # set + tes suara langsung
+```
+
+Rekomendasi: `25bdf652971e49b1b089cecfd4b1f943` (perempuan muda, tenang, conversational).
+Alternatif: `970f7148…` (halus/smooth), `3095f8e1…` (rame/energik).
+
+Di HP, "Cadangan suara HP" (speechSynthesis) otomatis dimatikan kalau voice Fish terkunci —
+biar saat server gagal Kosmate diam, bukan ganti timbre.
+
+
+
 ## Budget latency (target biar kerasa "hidup")
 
 | Tahap | Waktu realistis | Cara nurunin |

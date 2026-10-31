@@ -30,12 +30,14 @@ def clean_for_speech(text: str) -> str:
     return t[:1200]
 
 
-def _cache_path(text: str, voice: str) -> "object":
-    key = hashlib.sha1(f"{text}|{CFG.tts_provider}|{voice}|{CFG.fish_ref}".encode()).hexdigest()[:20]
+def _cache_path(text: str, voice: str, rate: str, pitch: str) -> "object":
+    key = hashlib.sha1(
+        f"{text}|{CFG.tts_provider}|{voice}|{CFG.fish_ref}|{rate}|{pitch}".encode()
+    ).hexdigest()[:20]
     return CFG.cache_dir / "tts" / f"{key}.mp3"
 
 
-async def _fish(text: str) -> AsyncIterator[bytes]:
+async def _fish(text: str, speed: float = 1.0) -> AsyncIterator[bytes]:
     if not CFG.fish_key:
         raise RuntimeError("FISH_API_KEY kosong")
     body = {
@@ -45,7 +47,7 @@ async def _fish(text: str) -> AsyncIterator[bytes]:
         "normalize": True,
         "chunk_length": 200,
         "latency": "balanced",
-        "prosody": {"speed": 1.0, "volume": 0, "normalize_loudness": True},
+        "prosody": {"speed": round(speed, 2), "volume": 0, "normalize_loudness": True},
     }
     if CFG.fish_ref:
         body["reference_id"] = CFG.fish_ref
@@ -65,32 +67,61 @@ async def _fish(text: str) -> AsyncIterator[bytes]:
                     yield chunk
 
 
-async def _edge(text: str, voice: str) -> AsyncIterator[bytes]:
+async def _edge(text: str, voice: str, rate: str, pitch: str) -> AsyncIterator[bytes]:
     import edge_tts  # import lokal biar startup cepat
 
-    comm = edge_tts.Communicate(text, voice or CFG.tts_voice, rate=CFG.tts_rate)
+    comm = edge_tts.Communicate(
+        text, voice or CFG.tts_voice, rate=rate, pitch=pitch, volume=CFG.tts_volume
+    )
     async for chunk in comm.stream():
         if chunk.get("type") == "audio" and chunk.get("data"):
             yield chunk["data"]
 
 
 def _providers() -> list[str]:
+    """Urutan provider TTS.
+
+    Kalau TTS_STRICT=1 (default), kita TIDAK pindah provider saat gagal —
+    karena pindah provider = ganti timbre suara, dan itu bikin suara lompat-lompat.
+    """
     p = CFG.tts_provider
     if p == "fish":
-        return ["fish"]
-    if p == "edge":
-        return ["edge"]
-    return (["fish"] if CFG.fish_key else []) + ["edge"]
+        base = ["fish"]
+    elif p == "edge":
+        base = ["edge"]
+    else:
+        base = (["fish"] if CFG.fish_key else []) + ["edge"]
+    if getattr(CFG, "tts_strict", True) and len(base) > 1:
+        return base[:1]
+    return base
 
 
-async def synth_stream(text: str, voice: str | None = None) -> AsyncIterator[bytes]:
-    """Yield potongan MP3. Cache di disk untuk teks pendek."""
+def _rate_to_speed(rate: str) -> float:
+    m = re.match(r"^([+-]?)(\d{1,2})%$", (rate or "").strip())
+    if not m:
+        return 1.0
+    sign = -1 if m.group(1) == "-" else 1
+    return max(0.5, min(1.6, 1 + sign * int(m.group(2)) / 100))
+
+
+async def synth_stream(
+    text: str, voice: str | None = None, rate: str | None = None
+) -> AsyncIterator[bytes]:
+    """Yield potongan MP3. Satu suara saja (dikunci), tempo bisa diatur."""
     clean = clean_for_speech(text)
     if not clean:
         return
-    voice = voice or CFG.tts_voice
+
+    # KUNCI SUARA: satu timbre untuk semua balasan, biar gak lompat-lompat.
+    if CFG.allow_voice_override and voice:
+        use_voice = voice
+    else:
+        use_voice = CFG.tts_voice
+    use_rate = (rate or CFG.tts_rate).strip()
+    use_pitch = CFG.tts_pitch
+
     cacheable = len(clean) <= 300
-    path = _cache_path(clean, voice)
+    path = _cache_path(clean, use_voice, use_rate, use_pitch)
     if cacheable and path.exists() and path.stat().st_size > 500:
         with open(path, "rb") as fh:
             yield fh.read()
@@ -101,9 +132,9 @@ async def synth_stream(text: str, voice: str | None = None) -> AsyncIterator[byt
     for name in _providers():
         try:
             if name == "fish":
-                agen = _fish(clean)
+                agen = _fish(clean, _rate_to_speed(use_rate))
             else:
-                agen = _edge(clean, voice)
+                agen = _edge(clean, use_voice, use_rate, use_pitch)
             async for chunk in agen:
                 buf.extend(chunk)
                 yield chunk

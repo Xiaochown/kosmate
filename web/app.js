@@ -10,6 +10,8 @@ const S = {
   silenceMs: 900,
   voice: "id-ID-GadisNeural",
   ttsMode: "auto",
+  tempo: "-12%",
+  browserFallback: true,
   session: "live-" + Date.now(),
   replyText: "",
   youSaid: "",
@@ -36,6 +38,8 @@ function loadSettings() {
       silenceMs: Number(s.silenceMs || 900),
       voice: s.voice || "id-ID-GadisNeural",
       ttsMode: s.ttsMode || "auto",
+      tempo: s.tempo || "-12%",
+      browserFallback: s.browserFallback !== false,
     });
   } catch (e) {}
 }
@@ -43,6 +47,7 @@ function saveSettings() {
   localStorage.setItem(LS, JSON.stringify({
     autoListen: S.autoListen, speakReply: S.speakReply,
     silenceMs: S.silenceMs, voice: S.voice, ttsMode: S.ttsMode,
+    tempo: S.tempo, browserFallback: S.browserFallback,
   }));
 }
 
@@ -141,7 +146,7 @@ async function speakOne(text) {
         const res = await fetch("/api/tts", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ text, voice: S.voice }),
+          body: JSON.stringify({ text, voice: S.voice, rate: S.tempo }),
         });
         if (!res.ok) throw new Error("server " + res.status);
         const blob = await res.blob();
@@ -152,6 +157,9 @@ async function speakOne(text) {
       } catch (e) {
         diag("tts", "server gagal: " + e.message);
         if (S.ttsMode === "server") throw e;
+        if (!S.browserFallback) {
+          throw new Error(e.message + " (cadangan suara HP dimatikan biar suara gak ganti)");
+        }
       }
     }
     // cadangan: suara bawaan HP
@@ -488,12 +496,23 @@ function bind() {
       setState("idle");
     }
   };
+  $("setTempo").onchange = (e) => {
+    S.tempo = e.target.value;
+    saveSettings();
+    diag("tts", "tempo: " + S.tempo);
+  };
   $("setTtsMode").onchange = (e) => {
     S.ttsMode = e.target.value;
     saveSettings();
     diag("tts", "mode suara: " + S.ttsMode);
   };
   $("diagBtn").onclick = () => openSheet("diag");
+  $("setFallback").onclick = () => {
+    S.browserFallback = !S.browserFallback;
+    saveSettings();
+    syncToggles();
+    diag("tts", "cadangan suara HP: " + (S.browserFallback ? "aktif" : "mati"));
+  };
   $("diagTtsTest").onclick = runTtsTest;
   $("diagMicTest").onclick = testMic;
   $("setSpeak").onclick = () => { S.speakReply = !S.speakReply; saveSettings(); syncToggles(); };
@@ -517,6 +536,12 @@ function syncToggles() {
   $("setVoice").value = S.voice;
   $("setSilence").value = String(S.silenceMs);
   if ($("setTtsMode")) $("setTtsMode").value = S.ttsMode;
+  if ($("setTempo")) $("setTempo").value = S.tempo;
+  const fb = $("setFallback");
+  if (fb) {
+    fb.classList.toggle("on", S.browserFallback);
+    fb.innerHTML = '<span class="dot' + (S.browserFallback ? " ok" : "") + '"></span>' + (S.browserFallback ? "aktif" : "mati");
+  }
 }
 
 /* ---------------- diagnostik ---------------- */
@@ -539,7 +564,7 @@ async function runTtsTest() {
     const res = await fetch("/api/tts", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text: "Tes suara dari panel diagnosa.", voice: S.voice }),
+      body: JSON.stringify({ text: "Tes suara dari panel diagnosa.", voice: S.voice, rate: S.tempo }),
     });
     if (!res.ok) {
       const body = await res.text();
@@ -571,12 +596,13 @@ function renderDiag() {
     ? (window.speechSynthesis.getVoices() || []).find((v) => /^id/i.test(v.lang))
     : null;
   const rows = [
+    ["Suara dipakai", (S.serverInfo && S.serverInfo.engine ? S.serverInfo.engine : "belum tahu") + " · tempo " + ((S.serverInfo && S.serverInfo.rate) || "-12%"), true],
+    ["Cadangan suara HP", S.browserFallback ? "aktif (bisa ganti timbre kalau server gagal)" : "mati (suara tetap satu)", true],
     ["STT (Web Speech)", hasSR ? "ada" : "TIDAK ADA → pakai Chrome, bukan Fully Kiosk", hasSR],
     ["TTS server", S.diag.tts || "belum dites", !!S.diag.tts && !/GAGAL|gagal/i.test(S.diag.tts)],
     ["TTS browser", hasSS ? "ada · " + nVoices + " suara" + (idVoice ? " · " + idVoice.name : " · (voice id-ID gak ketemu)") : "TIDAK ADA", hasSS],
     ["Bicara otomatis", S.speakReply ? "aktif" : "nonaktif", S.speakReply],
     ["Dengerin otomatis", S.autoListen ? "aktif" : "nonaktif", S.autoListen],
-    ["Mode suara", S.ttsMode, true],
     ["Log terakhir STT", S.diag.stt || "-", !!S.diag.stt && !/error|gagal/i.test(S.diag.stt)],
     ["Mic (tes manual)", S.diag.mic || "belum dites", S.diag.mic === "akses OK"],
   ];
@@ -678,7 +704,14 @@ async function boot() {
     $("brandName").textContent = h.name || "Kosmate";
     $("healthDot").className = "dot " + (h.llm_key ? "ok" : "err");
     $("memCount").textContent = (h.memory ? h.memory.facts : 0) + " fakta";
-    $("brandSub").textContent = h.llm + " · " + (h.tts_providers || []).join("/");
+    const engine = h.fish_key ? (h.fish_ref ? "Fish · voice terkunci" : "Fish · voice default") : "edge · Gadis";
+    $("brandSub").textContent = engine;
+    S.serverInfo = { voice: h.tts_voice, rate: h.tts_rate, strict: h.tts_strict, fish: h.fish_key, ref: h.fish_ref, engine };
+    // kalau server mengunci satu voice, matikan cadangan suara HP biar timbre gak ganti
+    if (h.tts_strict && h.fish_ref && !localStorage.getItem(LS)) {
+      S.browserFallback = false;
+      syncToggles();
+    }
     setStatus(h.llm_key ? "ketuk orb buat mulai ngobrol" : "isi API key dulu di file .env");
   } catch (e) {
     $("healthDot").className = "dot err";

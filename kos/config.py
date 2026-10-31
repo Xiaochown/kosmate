@@ -42,8 +42,13 @@ class Cfg:
     fish_key = get("FISH_API_KEY")
     fish_model = get("FISH_MODEL", "s2.1-pro-free")
     fish_ref = get("FISH_REFERENCE_ID")
+    # satu suara saja, dikunci. Gadis = satu-satunya voice perempuan id-ID di edge-tts
     tts_voice = get("TTS_VOICE", "id-ID-GadisNeural")
-    tts_rate = get("TTS_RATE", "+0%")
+    tts_rate = get("TTS_RATE", "-12%")
+    tts_pitch = get("TTS_PITCH", "-2Hz")
+    tts_volume = get("TTS_VOLUME", "+0%")
+    tts_strict = get("TTS_STRICT", "1") == "1"
+    allow_voice_override = get("ALLOW_VOICE_OVERRIDE", "0") == "1"
 
     # STT
     stt_provider = get("STT_PROVIDER", "auto").lower()

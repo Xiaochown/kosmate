@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 from contextlib import asynccontextmanager
 
@@ -80,6 +81,11 @@ async def health(request: Request):
             "mode": CFG.persona_mode,
             "tts_last_ok": LAST_TTS_OK,
             "tts_last_error": LAST_TTS_ERROR,
+            "tts_voice": CFG.tts_voice,
+            "tts_rate": CFG.tts_rate,
+            "tts_strict": CFG.tts_strict,
+            "fish_ref": bool(CFG.fish_ref),
+            "fish_model": CFG.fish_model if CFG.fish_key else "",
             "memory": memory.stats(),
             "time": time.time(),
         }
@@ -133,10 +139,13 @@ async def synth(request: Request):
     body = await request.json()
     text = (body.get("text") or "").strip()
     voice = (body.get("voice") or "").strip() or None
+    rate = (body.get("rate") or "").strip() or None
+    if rate and not re.fullmatch(r"[+-]?\d{1,2}%", rate):
+        rate = None
     if not text:
         raise HTTPException(400, "text kosong")
     return StreamingResponse(
-        _tts_guard(tts.synth_stream(text, voice=voice)),
+        _tts_guard(tts.synth_stream(text, voice=voice, rate=rate)),
         media_type="audio/mpeg",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
