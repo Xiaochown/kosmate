@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from .config import CFG
+from . import settings as setelan
 
 _HARI = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
 
@@ -65,6 +66,22 @@ def build_system(memory_block: str = "") -> str:
         bagian_hari=part_of_day(now.hour),
     )
     system += "\n" + _MODE.get(CFG.persona_mode, _MODE["temen"])
+
+    # personality dari setelan runtime
+    tone = setelan.get("tone")
+    humor = str(setelan.get("humor"))
+    nick = setelan.get("nickname")
+    gaya = {
+        "santai": "Gaya: santai, akrab, kayak teman sebaya.",
+        "lembut": "Gaya: lembut, penyabar, kalimat tenang, jangan pernah nyindir.",
+        "tegas": "Gaya: tegas dan to the point, kalimat pendek, langsung ke inti.",
+    }.get(tone, "")
+    if gaya:
+        system += "\n" + gaya
+    system += "\nHumor: " + {"0": "serius, tanpa becanda.", "1": "sesekali nyeletuk halus.",
+                               "2": "sering becanda ringan, tapi tetap nyambung."}.get(humor, "secukupnya.")
+    if nick:
+        system += "\nPanggil user dengan \"" + nick + "\"."
     if memory_block.strip():
         system += (
             "\n\n=== YANG KAMU INGAT TENTANG " + CFG.user_name.upper() + " ===\n"

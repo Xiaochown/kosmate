@@ -35,6 +35,15 @@ SPEK: dict[str, dict[str, Any]] = {
                             "hint": "Berapa banyak fakta/memori disisipkan ke prompt."},
 }
 
+TEKS: dict[str, dict[str, Any]] = {
+    "tone":     {"default": "santai", "pilihan": ["santai", "lembut", "tegas"],
+                 "label": "Tone", "hint": "santai = kayak teman, lembut = lebih kalem & penyabar, tegas = to the point."},
+    "humor":    {"default": "1", "pilihan": ["0", "1", "2"],
+                 "label": "Humor (0-2)", "hint": "0 serius, 1 secukupnya, 2 banyak nyeletuk."},
+    "nickname": {"default": "", "pilihan": [],
+                 "label": "Nickname", "hint": "Dia manggil lu apa. Kosongkan = pakai nama default."},
+}
+
 PRESETS: dict[str, dict[str, Any]] = {
     "default": {},
     "story": {
@@ -68,14 +77,26 @@ def _clamp(key: str, val: Any) -> Any:
     return max(s["min"], min(s["max"], v))
 
 
+def _bersih_teks(kunci: str, val: Any) -> str:
+    s = TEKS[kunci]
+    v = str(val or "").strip()[:40]
+    if s["pilihan"]:
+        return v if v in s["pilihan"] else s["default"]
+    return v
+
+
 def load() -> dict[str, Any]:
     data: dict[str, Any] = {k: v["default"] for k, v in SPEK.items()}
+    data.update({k: v["default"] for k, v in TEKS.items()})
     try:
         if FILE.exists():
             saved = json.loads(FILE.read_text(encoding="utf-8"))
             for k in SPEK:
                 if k in saved:
                     data[k] = _clamp(k, saved[k])
+            for k in TEKS:
+                if k in saved:
+                    data[k] = _bersih_teks(k, saved[k])
     except Exception:  # noqa: BLE001
         pass
     return data
@@ -90,6 +111,8 @@ def save(baru: dict[str, Any]) -> dict[str, Any]:
     for k, v in (baru or {}).items():
         if k in SPEK:
             data[k] = _clamp(k, v)
+        elif k in TEKS:
+            data[k] = _bersih_teks(k, v)
     FILE.parent.mkdir(parents=True, exist_ok=True)
     FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
     return data
@@ -99,9 +122,10 @@ def preset(nama: str) -> dict[str, Any]:
     if nama not in PRESETS:
         raise ValueError(f"preset tidak dikenal: {nama}")
     base = {k: v["default"] for k, v in SPEK.items()}
+    base.update({k: v["default"] for k, v in TEKS.items()})
     base.update(PRESETS[nama])
     return save(base)
 
 
 def skema() -> dict[str, Any]:
-    return {"spec": SPEK, "presets": list(PRESETS), "values": load()}
+    return {"spec": SPEK, "teks": TEKS, "presets": list(PRESETS), "values": load()}

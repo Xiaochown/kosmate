@@ -775,6 +775,31 @@ function renderAdv(j) {
   box.querySelectorAll("input[data-key]").forEach((inp) => {
     inp.onchange = () => postSettings({ [inp.dataset.key]: inp.value });
   });
+
+  // setelan teks (tone / humor / nickname)
+  const pb = $("personaFields");
+  if (pb && j.teks) {
+    pb.innerHTML = Object.entries(j.teks)
+      .map(([k, s]) => {
+        if (s.pilihan && s.pilihan.length) {
+          return (
+            '<div class="field"><label for="teks_' + k + '">' + s.label + "</label>" +
+            '<select id="teks_' + k + '" data-teks="' + k + '">' +
+            s.pilihan.map((v) => '<option value="' + v + '"' + (vals[k] === v ? " selected" : "") + ">" + v + "</option>").join("") +
+            "</select><p class=\"tiny\">" + (s.hint || "") + "</p></div>"
+          );
+        }
+        return (
+          '<div class="field"><label for="teks_' + k + '">' + s.label + "</label>" +
+          '<input id="teks_' + k + '" data-teks="' + k + '" type="text" value="' + (vals[k] || "") + '">' +
+          '<p class="tiny">' + (s.hint || "") + "</p></div>"
+        );
+      })
+      .join("");
+    pb.querySelectorAll("[data-teks]").forEach((el) => {
+      el.onchange = () => postSettings({ [el.dataset.teks]: el.value });
+    });
+  }
 }
 
 async function postSettings(values) {

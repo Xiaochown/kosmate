@@ -377,3 +377,51 @@ body[data-state="speaking"] .status { color: var(--ink); }
 /* preset buttons (Advanced) */
 .preset-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .preset-row .btn { flex: 1; min-width: 104px; font-size: 12.5px; padding: 0 10px; }
+
+/* ---------- quick action cards ---------- */
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.card {
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+.card.wide { grid-column: 1 / -1; flex-direction: row; align-items: stretch; }
+.card img { width: 100%; height: 96px; object-fit: cover; display: block; border-bottom: 1px solid var(--line); }
+.card.wide img { width: 42%; height: auto; border-bottom: 0; border-right: 1px solid var(--line); }
+.card-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
+.card-body h3 { font-size: 13.5px; font-weight: 600; }
+.card-body p { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+.card-body input {
+  height: 34px; padding: 0 10px;
+  border: 1px solid var(--line-2); border-radius: 8px;
+  background: var(--bg); color: var(--ink); font: inherit; font-size: 12.5px; width: 100%;
+}
+.card-body input:focus { outline: none; border-color: var(--ink); }
+.card .btn { height: 34px; font-size: 12.5px; }
+.card .btn.solid { background: var(--ink); border-color: var(--ink); color: #fff; }
+.card .btn.solid:hover { background: #26262a; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  height: 28px; padding: 0 10px;
+  border: 1px solid var(--line-2); border-radius: 999px;
+  background: var(--bg); color: var(--muted);
+  font: inherit; font-size: 11.5px; cursor: pointer;
+}
+.chip:hover { border-color: var(--ink); color: var(--ink); }
+.chip:active { background: var(--soft); }
+
+.card .facts { margin: 2px 0 0; }
+.card .fact { padding: 7px 0; font-size: 12px; }
+.card .fact b { font-size: 12px; }
+
+.filebtn { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+
+@media (max-width: 400px) {
+  .cards { grid-template-columns: 1fr; }
+  .card.wide { flex-direction: column; }
+  .card.wide img { width: 100%; height: 96px; border-right: 0; border-bottom: 1px solid var(--line); }
+}
