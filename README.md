@@ -172,6 +172,15 @@ python scripts/fish_voice_set.py <model_id>
 
 
 
+## UI (v0.6)
+
+Monokrom ala Linear, tanpa gradient: `#0b0d10` latar, `#15171b` surface, `#262a31` border,
+satu aksen `#5e6ad2`, body 15px. Orb 172px dengan 4 state (`idle` / `listening` / `thinking` /
+`speaking`) yang beda warna, ring, dan animasi. Semua tombol punya label teks, tinggi 44px,
+`hover` / `active` / `focus-visible`. Pengaturan dikelompokkan: Suara, Dengar & jawab, Memori.
+Verifikasi visual tidak bisa lewat screenshot di box proot ini (Chromium mati) — dipakai
+`scripts/ui_v*_test.cjs` (jsdom) + `scripts/smoke_py.py` (11 endpoint).
+
 ## Anti-potong: mic nunggu jawaban selesai
 
 Masalah lama: mic dinyalakan ulang tiap habis **satu kalimat**, bukan setelah seluruh
