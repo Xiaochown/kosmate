@@ -355,6 +355,10 @@ async function sendMessage(text) {
           if (sisa && sisa.trim().length >= 3) enqueueSpeech(sisa);
           S.replyBuf = "";
           if (evt.memory) $("memCount").textContent = evt.memory.facts + " fakta";
+          if (evt.truncated) {
+            setStatus("jawaban kena batas token — naikin <code>LLM_MAX_TOKENS</code> di .env");
+            diag("stt", "jawaban truncated: finish_reason=length");
+          }
         }
       }
     }

@@ -35,6 +35,10 @@ class Cfg:
     llm_base = get("LLM_BASE_URL", "https://api.teamorouter.com/v1").rstrip("/")
     llm_key = get("LLM_API_KEY")
     llm_model = get("LLM_MODEL", "deepseek-v4-flash-free")
+    # 400 token terlalu kecil: jawaban panjang (mis. disuruh bacain pidato) kepotong di tengah
+    llm_max_tokens = max(200, int(get("LLM_MAX_TOKENS", "1200") or 1200))
+    # berapa kali boleh lanjut otomatis kalau kena batas token
+    llm_continue_max = max(0, min(5, int(get("LLM_CONTINUE_MAX", "2") or 2)))
     llm_fallback = get("LLM_MODEL_FALLBACK", "gemini-3.5-flash-lite")
 
     # TTS

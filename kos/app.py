@@ -93,6 +93,15 @@ async def health(request: Request):
     )
 
 
+def _dedupe(prev: str, new: str) -> str:
+    """Buang tumpang-tindih di awal lanjutan biar gak ada kata dobel."""
+    tail = prev[-60:]
+    for n in range(min(len(tail), len(new)), 3, -1):
+        if tail.endswith(new[:n]):
+            return new[n:]
+    return new
+
+
 async def chat(request: Request):
     body = await request.json()
     message = (body.get("message") or "").strip()
@@ -106,11 +115,31 @@ async def chat(request: Request):
 
     async def gen():
         buf: list[str] = []
+        info: dict = {}
         yield _sse({"type": "start"})
         try:
-            async for delta in stream_chat(messages):
+            async for delta in stream_chat(messages, info=info):
                 buf.append(delta)
                 yield _sse({"type": "delta", "text": delta})
+            # kena batas token? lanjut otomatis, jangan biarkan kepotong di tengah kalimat
+            lanjut = 0
+            while info.get("finish_reason") == "length" and lanjut < CFG.llm_continue_max:
+                lanjut += 1
+                print(f"[chat] jawaban kena batas token, lanjut otomatis #{lanjut}")
+                cont = messages + [
+                    {"role": "assistant", "content": "".join(buf)},
+                    {"role": "user", "content": "Lanjutkan tepat dari kata terakhir. Jangan ulangi kalimat sebelumnya, jangan beri pembuka baru."},
+                ]
+                info.clear()
+                pertama = True
+                async for delta in stream_chat(cont, info=info):
+                    if pertama:
+                        pertama = False
+                        delta = _dedupe("".join(buf), delta)
+                        if not delta:
+                            continue
+                    buf.append(delta)
+                    yield _sse({"type": "delta", "text": delta})
         except Exception as e:  # noqa: BLE001
             msg = f"Otak gue lagi gangguan: {e}"
             yield _sse({"type": "error", "text": msg})
@@ -121,7 +150,12 @@ async def chat(request: Request):
             full = "Hmm, gue kosong. Coba ulang pertanyaannya."
             yield _sse({"type": "delta", "text": full})
         memory.add_episode("assistant", full, session)
-        yield _sse({"type": "done", "text": full, "memory": memory.stats()})
+        yield _sse({
+            "type": "done",
+            "text": full,
+            "memory": memory.stats(),
+            "truncated": info.get("finish_reason") == "length",
+        })
 
         conv = f"User: {message}\n{CFG.assistant_name}: {full}"
         should = any(w in message.lower() for w in FACT_WORDS) or memory.stats()["episodes"] % 4 == 0

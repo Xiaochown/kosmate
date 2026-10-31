@@ -28,7 +28,7 @@ def clean_for_speech(text: str) -> str:
     t = re.sub(r"[*_#>|~]+", " ", t)
     t = _EMOJI.sub(" ", t)
     t = re.sub(r"\s+", " ", t).strip()
-    return t[:1200]
+    return t[:4000]
 
 
 def _cache_path(text: str, voice: str, rate: str, pitch: str) -> "object":

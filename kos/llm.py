@@ -68,7 +68,7 @@ def _delta(obj: Any) -> str:
 
 
 async def _request(messages: list[dict], model: str, temperature: float,
-                   max_tokens: int, stream: bool) -> AsyncIterator[str]:
+                   max_tokens: int, stream: bool, info: dict | None = None) -> AsyncIterator[str]:
     payload = {
         "model": model,
         "messages": messages,
@@ -112,6 +112,13 @@ async def _request(messages: list[dict], model: str, temperature: float,
                 except json.JSONDecodeError:
                     continue
                 txt = _delta(obj)
+                if info is not None:
+                    try:
+                        fr = (obj.get("choices") or [{}])[0].get("finish_reason")
+                        if fr:
+                            info["finish_reason"] = fr
+                    except Exception:  # noqa: BLE001
+                        pass
                 if txt:
                     yield txt
 
@@ -120,9 +127,15 @@ async def stream_chat(
     messages: list[dict],
     model: str | None = None,
     temperature: float = 0.75,
-    max_tokens: int = 400,
+    max_tokens: int | None = None,
+    info: dict | None = None,
 ) -> AsyncIterator[str]:
-    """Stream teks; fallback model kedua; fallback ke non-stream kalau perlu."""
+    """Stream teks; fallback model kedua; fallback ke non-stream kalau perlu.
+
+    `info` (opsional) diisi finish_reason supaya pemanggil tahu kalau jawaban
+    kepotong gara-gara batas token, bukan karena modelnya berhenti.
+    """
+    mt = max_tokens or CFG.llm_max_tokens
     models = [model or CFG.llm_model]
     if CFG.llm_fallback and CFG.llm_fallback not in models:
         models.append(CFG.llm_fallback)
@@ -131,7 +144,7 @@ async def stream_chat(
     for m in models:
         got = False
         try:
-            async for chunk in _request(messages, m, temperature, max_tokens, True):
+            async for chunk in _request(messages, m, temperature, mt, True, info):
                 got = True
                 yield chunk
             if got:
@@ -140,7 +153,7 @@ async def stream_chat(
             last_err = e
         if not got:
             try:
-                async for chunk in _request(messages, m, temperature, max_tokens, False):
+                async for chunk in _request(messages, m, temperature, mt, False, info):
                     yield chunk
                 return
             except Exception as e:  # noqa: BLE001
