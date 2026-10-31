@@ -181,6 +181,18 @@ satu aksen `#5e6ad2`, body 15px. Orb 172px dengan 4 state (`idle` / `listening` 
 Verifikasi visual tidak bisa lewat screenshot di box proot ini (Chromium mati) — dipakai
 `scripts/ui_v*_test.cjs` (jsdom) + `scripts/smoke_py.py` (11 endpoint).
 
+## Prosodi: satu blok, bukan per kalimat
+
+Dulu tiap tanda titik/koma langsung dipotong jadi request TTS sendiri. Akibatnya tiap klip
+memulai intonasi dari nol (nadanya "kereset") dan ada jeda jaringan 1-3 detik di tiap potongan.
+
+Sekarang default **satu blok**: tunggu jawaban selesai, satu request TTS untuk seluruh teks.
+Kalau teks > 420 karakter, dipotong di **batas kalimat terakhir** (bukan tiap kalimat), jadi
+intonasi tetap nyambung. Fish juga dipanggil dengan `chunk_length=300` (maksimum) dan
+`latency=normal`.
+
+Bisa diubah di ⚙ → *Ucapkan per*: `blok` (default) atau `kalimat` (mulai lebih cepat, nada reset).
+
 ## Anti-potong: mic nunggu jawaban selesai
 
 Masalah lama: mic dinyalakan ulang tiap habis **satu kalimat**, bukan setelah seluruh

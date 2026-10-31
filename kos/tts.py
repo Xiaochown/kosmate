@@ -46,8 +46,8 @@ async def _fish(text: str, speed: float = 1.0, ref: str = "") -> AsyncIterator[b
         "format": "mp3",
         "mp3_bitrate": 128,
         "normalize": True,
-        "chunk_length": 200,
-        "latency": "balanced",
+        "chunk_length": CFG.fish_chunk,
+        "latency": CFG.fish_latency,
         "prosody": {"speed": round(speed, 2), "volume": 0, "normalize_loudness": True},
     }
     use_ref = ref or CFG.fish_ref

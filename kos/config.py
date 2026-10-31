@@ -42,6 +42,9 @@ class Cfg:
     fish_key = get("FISH_API_KEY")
     fish_model = get("FISH_MODEL", "s2.1-pro-free")
     fish_ref = get("FISH_REFERENCE_ID")
+    # prosodi: chunk lebih panjang = intonasi nyambung (Fish batasnya 100-300)
+    fish_chunk = max(100, min(300, int(get("FISH_CHUNK_LENGTH", "300") or 300)))
+    fish_latency = get("FISH_LATENCY", "normal")
     # satu suara saja, dikunci. Gadis = satu-satunya voice perempuan id-ID di edge-tts
     tts_voice = get("TTS_VOICE", "id-ID-GadisNeural")
     tts_rate = get("TTS_RATE", "-20%")

@@ -28,6 +28,8 @@ const S = {
   recErrors: 0,
   lastSpoken: "",
   cooldownMs: 900,
+  speechChunk: "block", // "block" = satu blok utuh (intonasi nyambung) | "sentence" = per kalimat
+  chunkChars: 420,
   listenTimer: null,
   stopRequested: false,
   cancelSpeech: null,
@@ -43,6 +45,7 @@ function loadSettings() {
       speakReply: s.speakReply !== false,
       silenceMs: Math.max(300, Math.min(60000, Number(s.silenceMs || 900))),
       cooldownMs: Math.max(200, Math.min(15000, Number(s.cooldownMs || 900))),
+      speechChunk: s.speechChunk === "sentence" ? "sentence" : "block",
       voice: s.voice || "id-ID-GadisNeural",
       ttsMode: s.ttsMode || "auto",
       tempo: s.tempo || "-20%",
@@ -55,6 +58,7 @@ function saveSettings() {
     autoListen: S.autoListen, speakReply: S.speakReply,
     silenceMs: S.silenceMs, voice: S.voice, ttsMode: S.ttsMode,
     tempo: S.tempo, browserFallback: S.browserFallback, cooldownMs: S.cooldownMs,
+    speechChunk: S.speechChunk,
   }));
 }
 
@@ -260,26 +264,50 @@ function playBlob(blob) {
   });
 }
 
-/* ---------------- sentence streaming ---------------- */
-function boundaryIndex(t) {
-  for (let i = 0; i < t.length; i++) {
+/* ---------------- potong teks buat TTS ----------------
+   Satu blok utuh = satu request TTS = intonasi nyambung, tanpa jeda di tiap titik.
+   Kalau teks panjang (> chunkChars), potong di batas kalimat TERAKHIR biar tetap wajar.
+*/
+function boundaryIndex(t, from = 0) {
+  for (let i = from; i < t.length; i++) {
     if (".!?…\n".includes(t[i])) return i;
   }
   return -1;
 }
 
+function takeChunk(buf, flush) {
+  if (flush) return { take: buf, rest: "" };
+  const min = Number(S.chunkChars) || 420;
+  if (buf.length < min) return { take: "", rest: buf };
+  // cari batas kalimat terakhir di 60% terakhir buffer
+  let cut = -1;
+  for (let i = buf.length - 1; i >= Math.floor(buf.length * 0.6); i--) {
+    if (".!?…\n".includes(buf[i])) { cut = i + 1; break; }
+  }
+  if (cut === -1) return { take: "", rest: buf };
+  return { take: buf.slice(0, cut), rest: buf.slice(cut) };
+}
+
 function feedDelta(chunk) {
   S.replyText += chunk;
   showReply();
-  let buf = (S.replyBuf || "") + chunk;
-  let idx = boundaryIndex(buf);
-  while (idx !== -1) {
-    const sentence = buf.slice(0, idx + 1);
-    buf = buf.slice(idx + 1);
-    if (sentence.trim().length >= 6) enqueueSpeech(sentence);
-    idx = boundaryIndex(buf);
+  S.replyBuf = (S.replyBuf || "") + chunk;
+
+  if (S.speechChunk === "sentence") {
+    // mode lama: potong tiap kalimat (intonasi ke-reset, tapi mulai lebih cepat)
+    let idx = boundaryIndex(S.replyBuf);
+    while (idx !== -1) {
+      const sentence = S.replyBuf.slice(0, idx + 1);
+      S.replyBuf = S.replyBuf.slice(idx + 1);
+      if (sentence.trim().length >= 6) enqueueSpeech(sentence);
+      idx = boundaryIndex(S.replyBuf);
+    }
+    return;
   }
-  S.replyBuf = buf;
+
+  const { take, rest } = takeChunk(S.replyBuf, false);
+  if (take.trim().length >= 20) enqueueSpeech(take);
+  S.replyBuf = rest;
 }
 
 /* ---------------- chat ---------------- */
@@ -322,7 +350,9 @@ async function sendMessage(text) {
           showReply();
           enqueueSpeech(evt.text);
         } else if (evt.type === "done") {
-          if (S.replyBuf && S.replyBuf.trim().length >= 3) enqueueSpeech(S.replyBuf);
+          // sisa teks diucapkan utuh (satu request TTS) biar intonasinya nyambung
+          const sisa = takeChunk(S.replyBuf || "", true).take;
+          if (sisa && sisa.trim().length >= 3) enqueueSpeech(sisa);
           S.replyBuf = "";
           if (evt.memory) $("memCount").textContent = evt.memory.facts + " fakta";
         }
@@ -563,6 +593,11 @@ function bind() {
       setState("idle");
     }
   };
+  $("setSpeechChunk").onchange = (e) => {
+    S.speechChunk = e.target.value === "sentence" ? "sentence" : "block";
+    saveSettings();
+    diag("tts", "potong teks: " + S.speechChunk);
+  };
   $("setTempo").onchange = (e) => {
     S.tempo = e.target.value;
     saveSettings();
@@ -615,6 +650,7 @@ function syncToggles() {
   if ($("setCooldown")) $("setCooldown").value = String(S.cooldownMs);
   if ($("setTtsMode")) $("setTtsMode").value = S.ttsMode;
   if ($("setTempo")) $("setTempo").value = S.tempo;
+  if ($("setSpeechChunk")) $("setSpeechChunk").value = S.speechChunk;
   const fb = $("setFallback");
   if (fb) {
     fb.classList.toggle("on", S.browserFallback);

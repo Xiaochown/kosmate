@@ -108,6 +108,14 @@
             <option value="browser">HP saja — offline</option>
           </select>
         </div>
+        <div class="field">
+          <label for="setSpeechChunk">Ucapkan per</label>
+          <select id="setSpeechChunk">
+            <option value="block">Satu blok utuh — intonasi nyambung (disarankan)</option>
+            <option value="sentence">Per kalimat — mulai cepat, nada ke-reset</option>
+          </select>
+          <p class="tiny">Satu blok = satu request TTS. Kalau dipotong tiap titik, tiap potongan mulai dari intonasi baru — itu yang bikin nadanya "kereset".</p>
+        </div>
       </section>
 
       <section class="group">
