@@ -17,6 +17,13 @@ head_(){ printf '\n\033[1m== %s ==\033[0m\n' "$*"; }
 INTERACTIVE=1
 [ -t 0 ] || INTERACTIVE=0
 [ "${KOSMATE_FORCE_INTERACTIVE:-0}" = "1" ] && INTERACTIVE=1
+# Dijalankan lewat `curl | bash`? stdin = pipe. Coba ambil dari terminal lagi
+# biar pertanyaan API key tetap muncul. Kalau gak ada tty, lanjut non-interaktif.
+if [ "$INTERACTIVE" = "0" ] && [ "${KOSMATE_FORCE_INTERACTIVE:-0}" != "1" ] && [ -e /dev/tty ]; then
+  if { true < /dev/tty; } 2>/dev/null; then
+    exec < /dev/tty 2>/dev/null && INTERACTIVE=1
+  fi
+fi
 
 printf '\033[1m'
 cat <<'BANNER'

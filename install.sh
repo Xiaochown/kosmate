@@ -67,4 +67,11 @@ if [ "$NO_INSTALL" = "1" ]; then
   exit 0
 fi
 cd "$TARGET" || exit 1
+# `curl ... | bash` bikin stdin berupa pipe, jadi prompt bakal mati.
+# Ambil lagi stdin dari terminal supaya installer bisa nanya API key.
+if [ ! -t 0 ] && [ -e /dev/tty ]; then
+  if { true < /dev/tty; } 2>/dev/null; then
+    exec bash scripts/autoinstall.sh < /dev/tty
+  fi
+fi
 exec bash scripts/autoinstall.sh
