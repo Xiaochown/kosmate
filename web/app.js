@@ -545,7 +545,7 @@ function bind() {
       body: JSON.stringify({ mode: m }),
     });
   };
-  $("setVoice").onchange = (e) => { S.voice = e.target.value; saveSettings(); };
+  $("setVoice").onchange = (e) => pilihVoice(e.target.value);
   $("setAutoListen").onclick = () => {
     S.autoListen = !S.autoListen;
     saveSettings();
@@ -606,7 +606,10 @@ function syncToggles() {
   a.innerHTML = '<span class="dot' + (S.autoListen ? " ok" : "") + '"></span>' + (S.autoListen ? "aktif" : "nonaktif");
   s.classList.toggle("on", S.speakReply);
   s.innerHTML = '<span class="dot' + (S.speakReply ? " ok" : "") + '"></span>' + (S.speakReply ? "aktif" : "nonaktif");
-  $("setVoice").value = S.voice;
+  if ($("setVoice") && S.voiceKey) {
+    const ada = Array.from($("setVoice").options).some((o) => o.value === S.voiceKey);
+    if (ada) $("setVoice").value = S.voiceKey;
+  }
   $("setSilence").value = String(S.silenceMs);
   if ($("setCooldown")) $("setCooldown").value = String(S.cooldownMs);
   if ($("setTtsMode")) $("setTtsMode").value = S.ttsMode;
@@ -615,6 +618,56 @@ function syncToggles() {
   if (fb) {
     fb.classList.toggle("on", S.browserFallback);
     fb.innerHTML = '<span class="dot' + (S.browserFallback ? " ok" : "") + '"></span>' + (S.browserFallback ? "aktif" : "mati");
+  }
+}
+
+/* ---------------- pemilih suara ---------------- */
+async function loadVoices() {
+  try {
+    const r = await fetch("/api/voice");
+    const j = await r.json();
+    const sel = $("setVoice");
+    if (!sel) return;
+    sel.innerHTML = "";
+    (j.options || []).forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o.key;
+      opt.textContent = o.label + " · " + o.rate.replace("-", "−");
+      if (!o.ready) opt.textContent += " (butuh FISH_API_KEY)";
+      sel.appendChild(opt);
+    });
+    if (j.active) {
+      sel.value = j.active.key;
+      S.voiceKey = j.active.key;
+      $("voiceNote").innerHTML = j.fish_key
+        ? "Fish Audio siap. Pilih salah satu — kalau Fish gagal, Kosmate <b>diam</b>, tidak ganti suara lain."
+        : "FISH_API_KEY belum diisi di .env — voice Fish belum bisa dipakai. Isi dulu, lalu muat ulang halaman.";
+    }
+  } catch (e) {
+    diag("tts", "gagal muat daftar suara: " + e.message);
+  }
+}
+
+async function pilihVoice(key) {
+  try {
+    const r = await fetch("/api/voice", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ key }),
+    });
+    if (!r.ok) throw new Error("server " + r.status);
+    const j = await r.json();
+    S.voiceKey = j.active.key;
+    S.tempo = j.active.rate;
+    if (j.active.engine === "fish") S.browserFallback = false; // no fallback = no suara lain
+    saveSettings();
+    syncToggles();
+    diag("tts", "voice diganti: " + j.active.key + " (" + j.active.rate + ")");
+    setStatus("suara: <strong>" + j.active.label + "</strong> · " + j.active.rate);
+    await runTtsTest();
+  } catch (e) {
+    diag("tts", "gagal ganti voice: " + e.message);
+    setStatus("gagal ganti suara: " + e.message);
   }
 }
 
@@ -778,11 +831,12 @@ async function boot() {
     $("brandName").textContent = h.name || "Kosmate";
     $("healthDot").className = "dot " + (h.llm_key ? "ok" : "err");
     $("memCount").textContent = (h.memory ? h.memory.facts : 0) + " fakta";
-    const engine = h.fish_key ? (h.fish_ref ? "Fish · voice terkunci" : "Fish · voice default") : "edge · Gadis";
+    const engine = h.voice ? h.voice.label : (h.fish_key ? "Fish" : "edge · Gadis");
     $("brandSub").textContent = engine;
-    S.serverInfo = { voice: h.tts_voice, rate: h.tts_rate, strict: h.tts_strict, fish: h.fish_key, ref: h.fish_ref, engine };
-    // kalau server mengunci satu voice, matikan cadangan suara HP biar timbre gak ganti
-    if (h.tts_strict && h.fish_ref && !localStorage.getItem(LS)) {
+    S.serverInfo = { voice: h.tts_voice, rate: h.tts_rate, strict: h.tts_strict, fish: h.fish_key, ref: h.fish_ref, engine, active: h.voice };
+    await loadVoices();
+    // kalau voice aktif berbasis Fish, matikan cadangan suara HP biar timbre gak ganti
+    if (h.voice && h.voice.engine === "fish") {
       S.browserFallback = false;
       syncToggles();
     }

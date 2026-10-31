@@ -24,7 +24,7 @@ from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from . import memory, persona, stt, tts
+from . import memory, persona, stt, tts, voices
 from .config import CFG, ROOT
 from .llm import complete, stream_chat
 
@@ -84,6 +84,7 @@ async def health(request: Request):
             "tts_voice": CFG.tts_voice,
             "tts_rate": CFG.tts_rate,
             "tts_strict": CFG.tts_strict,
+            "voice": voices.active(),
             "fish_ref": bool(CFG.fish_ref),
             "fish_model": CFG.fish_model if CFG.fish_key else "",
             "memory": memory.stats(),
@@ -144,6 +145,12 @@ async def synth(request: Request):
         rate = None
     if not text:
         raise HTTPException(400, "text kosong")
+    v = voices.active()
+    if v.get("engine") == "fish" and not CFG.fish_key:
+        raise HTTPException(
+            503,
+            "FISH_API_KEY belum diisi di .env — voice " + v["key"] + " belum bisa dipakai",
+        )
     return StreamingResponse(
         _tts_guard(tts.synth_stream(text, voice=voice, rate=rate)),
         media_type="audio/mpeg",
@@ -263,6 +270,28 @@ async def set_mode(request: Request):
     return JSONResponse({"mode": mode})
 
 
+async def get_voice(request: Request):
+    return JSONResponse(
+        {
+            "active": voices.active(),
+            "options": voices.available(),
+            "fish_key": bool(CFG.fish_key),
+            "fish_model": CFG.fish_model,
+        }
+    )
+
+
+async def set_voice(request: Request):
+    body = await request.json()
+    key = (body.get("key") or "").strip().lower()
+    try:
+        v = voices.set_active(key)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    print(f"[voice] aktif: {v['key']} ({v['engine']}) ref={v['ref'] or '-'} rate={v['rate']}")
+    return JSONResponse({"active": v, "options": voices.available()})
+
+
 async def export_memory(request: Request):
     return JSONResponse(memory.export_all())
 
@@ -278,6 +307,8 @@ routes = [
     Route("/api/greeting", greeting, methods=["POST"]),
     Route("/api/stt", transcribe, methods=["POST"]),
     Route("/api/mode", set_mode, methods=["POST"]),
+    Route("/api/voice", get_voice),
+    Route("/api/voice", set_voice, methods=["POST"]),
     Route("/api/export", export_memory),
     Route("/api/memory/stats", mem_stats),
     Route("/api/memory/context", mem_context),

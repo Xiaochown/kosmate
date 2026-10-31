@@ -144,33 +144,31 @@ ada contoh output yang benar dan bagian troubleshooting.
 | DELETE | `/api/memory/facts/{id}` | hapus fakta (dia langsung lupa) |
 | GET | `/api/export` | backup seluruh memori (JSON) |
 
-## Suara: satu voice, dikunci
+## Suara: pilih dari UI, tanpa fallback
 
-Kosmate sengaja **cuma punya satu suara**. Pindah provider saat gagal = pindah timbre,
-dan itu yang bikin suara lompat-lompat. Jadi:
+Voice dipilih di **⚙ → Suara** (bukan lagi dikunci satu):
 
-- `TTS_STRICT=1` (default) — tidak ada perpindahan provider diam-diam
-- `TTS_RATE=-12%` + `TTS_PITCH=-2Hz` — tempo pelan & halus (bisa `-20%` / `+0%` di Pengaturan)
-- **Tanpa Fish**: `id-ID-GadisNeural` (satu-satunya voice perempuan Indonesia di edge-tts)
-- **Dengan Fish Audio**: pilih voice komunitas Indonesia lalu kunci:
+| Opsi | Engine | Tempo |
+|---|---|---|
+| Miyaa | Fish | 0.80x |
+| Kang Dedi | Fish | 0.85x |
+| Prabowo | Fish | 0.80x |
+| Gadis | edge-tts (tanpa Fish) | 0.85x |
+
+Pilihan disimpan di `data/voice.json` (bertahan setelah restart) dan mengubah tempo otomatis.
+
+**Tidak ada fallback.** Kalau voice Fish dipilih tapi gagal (key kosong, credit habis, 402),
+`/api/tts` balas **HTTP 503** dan Kosmate **diam** — bukan diam-diam pindah ke edge atau suara
+browser. Alasannya: ganti timbre di tengah percakapan lebih buruk daripada tidak bersuara.
+Cadangan suara HP (`speechSynthesis`) otomatis dimatikan saat voice Fish aktif.
+
+CLI masih ada kalau mau set dari terminal:
 
 ```bash
-python scripts/fish_voice_set.py --list         # 3 pilihan suara
-python scripts/fish_voice_set.py --preview-all  # bikin contoh 3 suara sekaligus (butuh key)
-python scripts/fish_voice_set.py <model_id>     # set + tes suara itu
+python scripts/fish_voice_set.py --list     # 3 voice Fish
+python scripts/fish_voice_set.py --preview-all
+python scripts/fish_voice_set.py <model_id>
 ```
-
-| Voice | Karakter | Tempo |
-|---|---|---|
-| **Miyaa** `37df5d3b…` | perempuan muda, cheerful, friendly *(default)* | 0.8x |
-| **Kang Dedi Mulyadi** `41f9f6fa…` | laki-laki, ceria, ekspresif | 0.85x |
-| **Prabowo** `b8d594e6…` | laki-laki, dalam, tegas | 0.8x |
-
-Memilih voice otomatis menulis `FISH_REFERENCE_ID` **dan** `TTS_RATE` (tempo bawaan voice itu).
-Tempo lain: `-30%` 0.7x · `-20%` 0.8x · `-15%` 0.85x · `-12%` 0.88x · `+0%` 1x — bisa diganti dari ⚙.
-
-Di HP, "Cadangan suara HP" (speechSynthesis) otomatis dimatikan kalau voice Fish terkunci —
-biar saat server gagal Kosmate diam, bukan ganti timbre.
 
 
 

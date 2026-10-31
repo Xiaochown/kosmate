@@ -12,6 +12,7 @@ from typing import AsyncIterator
 import httpx
 
 from .config import CFG
+from . import voices
 
 _EMOJI = re.compile(
     "[" "\U0001F300-\U0001FAFF" "\U00002700-\U000027BF" "\U0001F1E6-\U0001F1FF" "\U00002600-\U000026FF" "]+"
@@ -37,9 +38,9 @@ def _cache_path(text: str, voice: str, rate: str, pitch: str) -> "object":
     return CFG.cache_dir / "tts" / f"{key}.mp3"
 
 
-async def _fish(text: str, speed: float = 1.0) -> AsyncIterator[bytes]:
+async def _fish(text: str, speed: float = 1.0, ref: str = "") -> AsyncIterator[bytes]:
     if not CFG.fish_key:
-        raise RuntimeError("FISH_API_KEY kosong")
+        raise RuntimeError("FISH_API_KEY kosong di .env — voice Fish belum bisa dipakai")
     body = {
         "text": text,
         "format": "mp3",
@@ -49,8 +50,9 @@ async def _fish(text: str, speed: float = 1.0) -> AsyncIterator[bytes]:
         "latency": "balanced",
         "prosody": {"speed": round(speed, 2), "volume": 0, "normalize_loudness": True},
     }
-    if CFG.fish_ref:
-        body["reference_id"] = CFG.fish_ref
+    use_ref = ref or CFG.fish_ref
+    if use_ref:
+        body["reference_id"] = use_ref
     headers = {
         "Authorization": f"Bearer {CFG.fish_key}",
         "Content-Type": "application/json",
@@ -79,21 +81,15 @@ async def _edge(text: str, voice: str, rate: str, pitch: str) -> AsyncIterator[b
 
 
 def _providers() -> list[str]:
-    """Urutan provider TTS.
+    """Engine TTS yang dipakai.
 
-    Kalau TTS_STRICT=1 (default), kita TIDAK pindah provider saat gagal —
-    karena pindah provider = ganti timbre suara, dan itu bikin suara lompat-lompat.
+    PENTING: kalau voice yang dipilih berbasis Fish, TIDAK ADA fallback ke edge.
+    Lebih baik diam + kasih error yang jelas daripada tiba-tiba ganti suara jelek.
     """
-    p = CFG.tts_provider
-    if p == "fish":
-        base = ["fish"]
-    elif p == "edge":
-        base = ["edge"]
-    else:
-        base = (["fish"] if CFG.fish_key else []) + ["edge"]
-    if getattr(CFG, "tts_strict", True) and len(base) > 1:
-        return base[:1]
-    return base
+    v = voices.active()
+    if v.get("engine") == "fish":
+        return ["fish"]
+    return ["edge"]
 
 
 def _rate_to_speed(rate: str) -> float:
@@ -112,16 +108,15 @@ async def synth_stream(
     if not clean:
         return
 
-    # KUNCI SUARA: satu timbre untuk semua balasan, biar gak lompat-lompat.
-    if CFG.allow_voice_override and voice:
-        use_voice = voice
-    else:
-        use_voice = CFG.tts_voice
-    use_rate = (rate or CFG.tts_rate).strip()
+    # voice aktif ditentukan dari pilihan user (data/voice.json)
+    v = voices.active()
+    use_ref = v.get("ref", "") if v.get("engine") == "fish" else ""
+    use_voice = "fish" if use_ref else CFG.tts_voice
+    use_rate = (rate or v.get("rate") or CFG.tts_rate).strip()
     use_pitch = CFG.tts_pitch
 
     cacheable = len(clean) <= 300
-    path = _cache_path(clean, use_voice, use_rate, use_pitch)
+    path = _cache_path(clean, f"{use_voice}:{use_ref or 'default'}", use_rate, use_pitch)
     if cacheable and path.exists() and path.stat().st_size > 500:
         with open(path, "rb") as fh:
             yield fh.read()
@@ -132,7 +127,7 @@ async def synth_stream(
     for name in _providers():
         try:
             if name == "fish":
-                agen = _fish(clean, _rate_to_speed(use_rate))
+                agen = _fish(clean, _rate_to_speed(use_rate), use_ref)
             else:
                 agen = _edge(clean, use_voice, use_rate, use_pitch)
             async for chunk in agen:
