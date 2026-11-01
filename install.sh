@@ -24,9 +24,18 @@ warn(){ printf '  [!!] %s\n' "$*"; }
 step(){ printf '\n== %s ==\n' "$*"; }
 
 step "1/3 paket dasar"
-if command -v pkg >/dev/null 2>&1; then
-  pkg install -y git curl python ffmpeg unzip >/dev/null 2>&1 || true
-  ok "paket Termux dipasang/dicek"
+# Cepat: kalau python sudah ada, JANGAN panggil pkg (pkg update bisa menggantung
+# lama di Termux, dan ffmpeg ±50 MB tidak dibutuhkan untuk jalan).
+BUTUH=""
+for b in python git unzip; do
+  command -v "$b" >/dev/null 2>&1 || BUTUH="$BUTUH $b"
+done
+if [ -n "$BUTUH" ] && [ "${KOSMATE_SKIP_PKG:-0}" != "1" ] && command -v pkg >/dev/null 2>&1; then
+  echo "  paket yang kurang:$BUTUH — memasang (bisa 1-2 menit)…"
+  pkg install -y $BUTUH >/dev/null 2>&1 || true
+  ok "paket Termux dicek"
+else
+  ok "paket dasar sudah ada — pkg dilewati (cepat)"
 fi
 if ! command -v python >/dev/null 2>&1; then
   warn "python tidak ada. jalankan: pkg install -y python"

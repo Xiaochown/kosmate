@@ -20,10 +20,25 @@ else
 fi
 
 step "1/7 paket sistem"
-pkg update -y >/dev/null 2>&1 || true
-pkg install -y python ffmpeg git termux-api >/dev/null 2>&1 || true
+# Cepat: hanya panggil pkg kalau benar-benar ada yang kurang.
+# `pkg update` + ffmpeg (±50 MB) sering bikin instalasi menggantung lama.
+BUTUH=""
+for b in python git; do
+  command -v "$b" >/dev/null 2>&1 || BUTUH="$BUTUH $b"
+done
+if [ -n "$BUTUH" ] && [ "${KOSMATE_SKIP_PKG:-0}" != "1" ]; then
+  say "   paket kurang:$BUTUH — memasang…"
+  pkg update -y >/dev/null 2>&1 || true
+  pkg install -y $BUTUH >/dev/null 2>&1 || true
+else
+  ok "paket sistem sudah lengkap — pkg dilewati (cepat)"
+fi
 ok "python: $(python -V 2>&1)"
-command -v ffmpeg >/dev/null && ok "ffmpeg ada" || warn "ffmpeg gak ada (whisper.cpp nanti butuh)"
+if command -v ffmpeg >/dev/null; then
+  ok "ffmpeg ada"
+else
+  ok "ffmpeg tidak ada — tidak wajib (cuma buat konversi audio opsional)"
+fi
 
 step "2/7 perbaiki pip kalau rusak"
 # Gejala umum: /usr/bin/pip nunjuk ke python3.13 padahal python sudah 3.14
@@ -41,7 +56,7 @@ else
   pip_ok && ok "dibenerin lewat ensurepip"
 
   if ! pip_ok; then
-    pkg install -y python-pip >/dev/null 2>&1 || true
+    [ "${KOSMATE_SKIP_PKG:-0}" = "1" ] || pkg install -y python-pip >/dev/null 2>&1 || true
     pip_ok && ok "dibenerin lewat paket python-pip"
   fi
 
@@ -95,7 +110,7 @@ fi
 if [ -z "$MODE" ]; then
   export UV_LINK_MODE=copy
   if ! command -v uv >/dev/null 2>&1; then
-    pkg install -y uv >/dev/null 2>&1 || true
+    [ "${KOSMATE_SKIP_PKG:-0}" = "1" ] || pkg install -y uv >/dev/null 2>&1 || true
     command -v uv >/dev/null 2>&1 || python -m pip install -q uv >/dev/null 2>&1 || true
   fi
   if command -v uv >/dev/null 2>&1; then
@@ -147,7 +162,7 @@ elif install_one edge-tts; then
   ok "edge-tts terpasang (suara gratis tanpa API key)"
 else
   warn "edge-tts gagal (butuh kompilasi aiohttp). pasang toolchain dulu..."
-  pkg install -y clang python-dev libffi openssl rust >/dev/null 2>&1 || true
+  [ "${KOSMATE_SKIP_PKG:-0}" = "1" ] || pkg install -y clang python-dev libffi openssl rust >/dev/null 2>&1 || true
   if install_one edge-tts; then
     ok "edge-tts terpasang setelah pasang toolchain"
   else
