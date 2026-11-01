@@ -42,6 +42,8 @@
       <span class="banner-tag">your room · at dusk</span>
     </div>
 
+    <div class="plank" aria-hidden="true"></div>
+
     <div class="mode-row" role="group" aria-label="Conversation mode">
       <button class="mode-chip active" data-mode="temen" type="button">Companion</button>
       <button class="mode-chip" data-mode="tutor" type="button">Tutor</button>
@@ -53,7 +55,7 @@
       <button class="orb" id="orb" type="button" aria-label="Start or stop speaking">
         <span class="orb-ring" aria-hidden="true"></span>
         <span class="orb-core" aria-hidden="true">
-          <img class="mascot" src="assets/mascot.webp" alt="">
+          <img class="mascot" id="mascotImg" src="assets/mascot.webp" alt="">
         </span>
       </button>
 
@@ -65,6 +67,8 @@
         <p class="reply-you" id="replyYou"></p>
         <p class="reply-text" id="replyText"></p>
       </section>
+
+      <p class="tip" id="tip"></p>
     </main>
 
     <footer class="composer">

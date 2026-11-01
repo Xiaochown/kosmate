@@ -74,7 +74,40 @@ function setState(st) {
     speaking: "Speaking…",
   }[st] || "";
   setStatus(label);
+  const m = $("mascotImg");
+  if (m) {
+    const pose = {
+      idle: "assets/mascot.webp",
+      listening: "assets/mascot-listen.webp",
+      thinking: "assets/mascot-think.webp",
+      speaking: "assets/mascot-speak.webp",
+    }[st];
+    if (pose && !m.src.endsWith(pose)) m.src = pose;
+  }
 }
+
+/* ---------------- tip di beranda ---------------- */
+const TIPS = [
+  "Ketik atau ketuk maskot buat ngobrol. Kalau lagi males ngomong, tinggal tulis aja.",
+  "Mau cerita pengantar tidur? Buka <b>Actions</b> → Bedtime story, Kai bakal cerita sampai kamu tidur.",
+  "Bilang \"ingetin gue 15 menit lagi\" — Kai bakal nyebut langsung di waktunya.",
+  "Klik <b>Memory</b> buat lihat apa aja yang Kai inget. Hapus satu, dia langsung lupa.",
+  "Upload catatan kuliah di <b>Settings → Notes</b>, terus minta \"kuis gue soal ini\".",
+  "Mode <b>Tutor</b> bikin jawaban lebih jelas dan sabar. Mode <b>Work</b> lebih ringkas.",
+  "Kalau suara kedengeran aneh, buka <b>Diagnostics</b> → Test voice.",
+];
+function pasangTip() {
+  const el = $("tip");
+  if (!el) return;
+  const i = Math.floor(Math.random() * TIPS.length);
+  el.innerHTML = "<b>Tip</b> · " + TIPS[i];
+  el.style.display = "";
+}
+function sembunyiTip() {
+  const el = $("tip");
+  if (el) el.style.display = "none";
+}
+
 function setStatus(html) { $("status").innerHTML = html; }
 function showLive(final, interim) {
   const el = $("live");
@@ -90,6 +123,7 @@ function showReply() {
   $("replyYou").textContent = S.youSaid ? "You: " + S.youSaid : "";
   $("replyText").textContent = S.replyText;
   if (S.replyText) r.classList.add("show");
+  sembunyiTip();
 }
 function clearReply() { $("reply").classList.remove("show"); }
 
@@ -775,6 +809,7 @@ async function loadVoices() {
         : "FISH_API_KEY is missing in .env — Fish voices are unavailable. Add it, then reload.";
     }
     updateVoiceChip();
+    pasangTip();
   } catch (e) {
     diag("tts", "voice list failed: " + e.message);
   }
