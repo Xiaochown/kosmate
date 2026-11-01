@@ -84,6 +84,10 @@ function setState(st) {
     }[st];
     if (pose && !m.src.endsWith(pose)) m.src = pose;
   }
+  // beri tahu modul lain (extras.js) supaya wake word bisa pause/lanjut
+  try {
+    document.dispatchEvent(new CustomEvent("kos:state", { detail: st }));
+  } catch (e) {}
 }
 
 /* ---------------- tip di beranda ---------------- */

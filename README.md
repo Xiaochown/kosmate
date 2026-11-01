@@ -304,3 +304,29 @@ Native Android (Kotlin) + foreground service + wake word + AEC → baru bisa ben
 9. **Termux + Python 3.14**: `pip` lama bisa rusak (`bad interpreter: python3.13`) setelah `pkg upgrade`. Pakai `python -m pip`, bukan `pip`. `install.sh` sudah otomatis benerin lewat `ensurepip`.
 10. **Jangan pakai FastAPI di sini.** pydantic-core ditulis Rust, tanpa wheel untuk `aarch64-linux-android` + Python 3.14 → `maturin`/`metadata-generation-failed`. Server pakai **Starlette** (murni Python). Ini juga alasan `requirements.txt` gak nyebut fastapi sama sekali.
 11. FTS5 dibuat **standalone**, bukan `content='facts'` — versi external-content bikin `DELETE` gagal dengan `no such column: T.obj`. DB lama otomatis di-rebuild saat start (`fts_version` di tabel `meta`).
+
+
+## Suara (Fish Audio)
+
+| kunci | nama | tempo |
+|---|---|---|
+| `miyaa` | Miyaa — perempuan muda, ceria (default) | 0.80x |
+| `beatrix` | Beatrix — perempuan, tenang | 0.82x |
+| `airia` | Airia — perempuan, lembut | 0.82x |
+| `toktok` | Live Toktok — perempuan, ceria | 0.82x |
+| `japangirl` | Japan girl — perempuan, imut | 0.82x |
+| `egirl` | E-Girl — perempuan, playful | 0.82x |
+| `venti` | Venti — perempuan, ringan | 0.82x |
+| `raiden` | Raiden Shogun — perempuan, dalam | 0.80x |
+| `kdm` | Kang Dedi — laki-laki, ekspresif | 0.85x |
+| `prabowo` | Prabowo — laki-laki, dalam | 0.80x |
+| `gadis` | Gadis — edge-tts (tanpa Fish) | 0.85x |
+
+Ganti dari UI: **Settings -> Voice**. Semua suara Fish butuh `FISH_API_KEY`.
+
+## Wake word "Hei Kai"
+
+**Settings -> Listening -> Wake word**. Bilang "Hei Kai" / "Hai Kai" / "Kai" untuk
+mulai bicara tanpa menyentuh HP. Syarat: Chrome, tab di depan, mic diizinkan.
+Setting tersimpan, jadi setelah reload otomatis nyala lagi. Otomatis berhenti saat
+mic sedang dipakai dan nyala lagi setelah jawaban selesai.

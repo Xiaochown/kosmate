@@ -244,55 +244,6 @@ async function imporMemori(file) {
   }
 }
 
-/* ------------------------------- WAKE WORD ------------------------------- */
-function stopWake() {
-  EX.wake = false;
-  if (EX.wakeRec) {
-    try { EX.wakeRec.abort(); } catch (e) {}
-    EX.wakeRec = null;
-  }
-  const b = $x("setWake");
-  if (b) { b.classList.remove("on"); b.innerHTML = '<span class="dot"></span>off'; }
-}
-
-function startWake() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    setStatus("Wake word needs Chrome (no speech recognition here)");
-    return;
-  }
-  EX.wake = true;
-  const r = new SR();
-  r.lang = "id-ID";
-  r.continuous = true;
-  r.interimResults = true;
-  r.onresult = (e) => {
-    let t = "";
-    for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
-    if (/\b(hai|hei|hey|halo|woi)?\s*kai\b/i.test(t)) {
-      diag("stt", "wake word: " + t.slice(0, 30));
-      try { r.abort(); } catch (err) {}
-      EX.wakeRec = null;
-      S.finalText = "";
-      setStatus("Yes?");
-      setTimeout(() => startListening(true), 250);
-    }
-  };
-  r.onerror = (e) => {
-    if (e.error === "not-allowed") { stopWake(); setStatus("Mic blocked — wake word off"); }
-  };
-  r.onend = () => {
-    if (EX.wake && !S.speaking && !S.listening && !S.busy) {
-      setTimeout(() => { try { r.start(); } catch (err) {} }, 700);
-    }
-  };
-  EX.wakeRec = r;
-  try { r.start(); } catch (e) {}
-  const b = $x("setWake");
-  if (b) { b.classList.add("on"); b.innerHTML = '<span class="dot ok"></span>on'; }
-  setStatus('Wake word on — say "Hei Kai"');
-}
-
 /* ------------------------------- util ------------------------------- */
 function esc(s) {
   return String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -346,10 +297,7 @@ function initExtras() {
   if (imp) imp.addEventListener("change", (e) => imporMemori(e.target.files && e.target.files[0]));
 
   // wake word
-  on("setWake", () => {
-    if (EX.wake) { stopWake(); setStatus("Wake word off"); }
-    else startWake();
-  });
+  on("setWake", () => { if (EX.toggleWake) EX.toggleWake(); });
 
   // poll
   setInterval(cekPengingat, 20000);

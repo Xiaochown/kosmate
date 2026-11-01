@@ -37,6 +37,49 @@ PRESETS: dict[str, dict[str, Any]] = {
         "ref": "",
         "rate": "-15%",
     },
+    # ---- koleksi suara perempuan (Fish Audio) ----
+    "beatrix": {
+        "label": "Beatrix — perempuan, tenang",
+        "engine": "fish",
+        "ref": "0b4a8834f8f34112860472c8229a517f",
+        "rate": "-18%",
+    },
+    "airia": {
+        "label": "Airia — perempuan, lembut",
+        "engine": "fish",
+        "ref": "b38fe0e89d374bae903adb4a104fff9a",
+        "rate": "-18%",
+    },
+    "toktok": {
+        "label": "Live Toktok — perempuan, ceria",
+        "engine": "fish",
+        "ref": "75bf8251e61548498ce786580abfdea7",
+        "rate": "-18%",
+    },
+    "japangirl": {
+        "label": "Japan girl — perempuan, imut",
+        "engine": "fish",
+        "ref": "63bc41e652214372b15d9416a30a60b4",
+        "rate": "-18%",
+    },
+    "egirl": {
+        "label": "E-Girl — perempuan, playful",
+        "engine": "fish",
+        "ref": "98655a12fa944e26b274c535e5e03842",
+        "rate": "-18%",
+    },
+    "venti": {
+        "label": "Venti — perempuan, ringan",
+        "engine": "fish",
+        "ref": "e34c486929524d41b88646b4ac2f382f",
+        "rate": "-18%",
+    },
+    "raiden": {
+        "label": "Raiden Shogun — perempuan, dalam",
+        "engine": "fish",
+        "ref": "5ac6fb7171ba419190700620738209d8",
+        "rate": "-20%",
+    },
 }
 
 DEFAULT_KEY = "miyaa"
