@@ -19,21 +19,30 @@ def data_uri(path: pathlib.Path, mime: str) -> str:
 for nama, mime in (("story.webp", "image/webp"), ("focus.webp", "image/webp"),
                    ("remind.webp", "image/webp"), ("journal.webp", "image/webp"),
                    ("banner.webp", "image/webp"), ("mascot.webp", "image/webp"),
-                   ("icon-192.png", "image/png")):
+                   ("mascot-listen.webp", "image/webp"), ("mascot-think.webp", "image/webp"),
+                   ("mascot-speak.webp", "image/webp"), ("tex-paper.webp", "image/webp"),
+                   ("tex-wood-dark.webp", "image/webp"), ("icon-192.png", "image/png")):
     f = ROOT / "assets" / nama
     if f.exists():
-        html = html.replace(f'src="assets/{nama}"', f'src="{data_uri(f, mime)}"')
-        html = html.replace(f'href="assets/{nama}"', f'href="{data_uri(f, mime)}"')
+        uri = data_uri(f, mime)
+        html = re.sub(rf'(src|href)="assets/{re.escape(nama)}[^"]*"', lambda m, u=uri: f'{m.group(1)}="{u}"', html)
 
 # buang manifest + stylesheet eksternal, sisip CSS
 html = re.sub(r'\s*<link rel="manifest"[^>]*>', "", html)
 html = re.sub(r'\s*<link rel="preconnect"[^>]*>', "", html)
 html = re.sub(r'\s*<link href="https://fonts\.googleapis\.com[^>]*>', "", html)
-html = html.replace('<link rel="stylesheet" href="style.css">', f"<style>\n{css}\n</style>")
+html = re.sub(r'<link rel="stylesheet" href="style\.css[^"]*">', lambda m: f"<style>\n{css}\n</style>", html)
 
-# sisip JS inline, buang tag eksternal
+# data: URI di dalam CSS juga (tekstur latar)
+for nama in ("tex-paper.webp", "tex-wood-dark.webp", "tex-wood.webp", "orn-wood-edge.webp"):
+    f = ROOT / "assets" / nama
+    if f.exists():
+        mime = "image/webp" if nama.endswith(".webp") else "image/png"
+        html = html.replace(f"assets/{nama}", data_uri(f, mime))
+
+# sisip JS inline, buang tag eksternal (toleran terhadap ?v=)
 for src, isi in (("demo.js", demo), ("app.js", app), ("extras.js", extras)):
-    html = html.replace(f'<script src="{src}"></script>', f"<script>\n{isi}\n</script>")
+    html = re.sub(rf'<script src="{re.escape(src)}[^"]*"></script>', lambda m, i=isi: f"<script>\n{i}\n</script>", html)
 
 (ROOT / "single.html").write_text(html)
 print("single.html:", len(html), "byte")
