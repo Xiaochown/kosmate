@@ -9,7 +9,7 @@ P="$H/profiles/web-builder"
 S="$P/skills/cozy-indie-game-ui"
 
 echo "== target: $P"
-mkdir -p "$S/references" || { echo "gagal bikin folder"; exit 1; }
+mkdir -p "$S/references" "$P/skills/kosmate-project" || { echo "gagal bikin folder"; exit 1; }
 
 ambil() {
   python3 - "$1" "$2" <<'PY'
@@ -26,6 +26,7 @@ PY
 ok=0
 for pair in \
   "SOUL.md|$P/SOUL.md" \
+  "skills/kosmate-project/SKILL.md|$P/skills/kosmate-project/SKILL.md" \
   "skills/cozy-indie-game-ui/SKILL.md|$S/SKILL.md" \
   "skills/cozy-indie-game-ui/references/tokens.css|$S/references/tokens.css" \
   "skills/cozy-indie-game-ui/references/pwa_shell.md|$S/references/pwa_shell.md" \
@@ -41,8 +42,8 @@ do
 done
 
 echo
-if [ "$ok" -eq 5 ]; then
-  echo "  SELESAI ($ok/5 file). Profile siap dipakai."
+if [ "$ok" -eq 6 ]; then
+  echo "  SELESAI ($ok/6 file). Profile siap dipakai."
   echo
   echo "  Langkah berikutnya di device ini:"
   echo "    hermes --profile web-builder          # langsung jalan pakai profile ini"
@@ -50,6 +51,6 @@ if [ "$ok" -eq 5 ]; then
   echo
   echo "  Di UI desktop: pilih profile 'web-builder' saat start sesi."
 else
-  echo "  ADA YANG GAGAL ($ok/5). Cek koneksi lalu jalankan lagi."
+  echo "  ADA YANG GAGAL ($ok/6). Cek koneksi lalu jalankan lagi."
   exit 1
 fi
