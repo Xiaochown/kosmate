@@ -73,9 +73,15 @@ else
 fi
 
 pasang_dep() {
-  "$1" -m pip install -q --upgrade pip 2>/dev/null
-  "$1" -m pip install -q -r requirements.txt 2>/dev/null
-  "$1" -c "import starlette, uvicorn, httpx" 2>/dev/null
+  local py="$1"
+  if "$py" -m pip --version >/dev/null 2>&1; then
+    "$py" -m pip install -q --upgrade pip 2>/dev/null
+    "$py" -m pip install -q -r requirements.txt 2>/dev/null
+  else
+    local uv="$(cari_uv || true)"
+    [ -n "$uv" ] && UV_LINK_MODE=copy "$uv" pip install -q --python "$py" -r requirements.txt 2>/dev/null
+  fi
+  "$py" -c "import starlette, uvicorn, httpx" 2>/dev/null
 }
 
 if [ -n "$PYBIN" ] && pasang_dep "$PYBIN"; then
@@ -110,6 +116,16 @@ if len(d) < 40:
 open(tujuan, "wb").write(d)
 PY
 }
+coba_ambil() {
+  local out="$1" url="$2" i=1
+  while [ "$i" -le 3 ]; do
+    if ambil "$out" "$url" 2>/dev/null; then return 0; fi
+    sleep 2
+    i=$((i+1))
+  done
+  return 1
+}
+
 n=0
 for pair in \
   "SOUL.md|$H/profiles/web-builder/SOUL.md" \
@@ -121,7 +137,7 @@ for pair in \
 do
   rel="${pair%%|*}"; out="${pair##*|}"
   mkdir -p "$(dirname "$out")"
-  if ambil "$out" "$RAW/$rel" 2>/dev/null; then n=$((n+1)); fi
+  if coba_ambil "$out" "$RAW/$rel"; then n=$((n+1)); else echo "  [!!] gagal: $rel"; fi
 done
 echo "  [ok] $n/6 file profile terpasang"
 
