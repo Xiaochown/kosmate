@@ -117,6 +117,24 @@ async function tambahPengingat(teks, kapan) {
   }
 }
 
+/* Server sudah mengirim notifikasi Android sendiri; klien cuma mengambil
+   kalimat yang tertinggal untuk diucapkan. Tidak ada polling berat. */
+function cekAnnounce() {
+  if (document.visibilityState !== "visible") return;  // hemat baterai
+  api("/api/announce")
+    .then((j) => {
+      const items = j.items || [];
+      if (!items.length) return;
+      items.forEach((a, i) => {
+        const kalimat = (a.kind === "reminder" ? "Pengingat: " : "") + a.teks;
+        setTimeout(() => enqueueSpeech(kalimat), i * 400);
+      });
+      setStatus("Pengingat: " + esc(items[items.length - 1].teks));
+      muatPengingat();
+    })
+    .catch(() => {});
+}
+
 function cekPengingat() {
   api("/api/reminders/due")
     .then((j) => {
@@ -300,7 +318,8 @@ function initExtras() {
   on("setWake", () => { if (EX.toggleWake) EX.toggleWake(); });
 
   // poll
-  setInterval(cekPengingat, 20000);
+  setInterval(cekAnnounce, 15000);
+  setTimeout(cekAnnounce, 2500);
   setInterval(muatKuota, 60000);
   muatKuota();
   muatCatatan();

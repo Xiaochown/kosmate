@@ -24,7 +24,7 @@ from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from . import extras, memory, persona, pin, stt, tts, voices
+from . import auth, extras, memory, migrate, persona, pin, scheduler, stt, tts, voices
 from . import settings as setelan
 from .config import CFG, ROOT
 from .llm import complete, stream_chat
@@ -37,10 +37,15 @@ LAST_TTS_OK = ""
 
 @asynccontextmanager
 async def lifespan(app):
+    migrate.jalankan()      # migrasi berversi + backup sebelum ubah skema
     memory.init()
     extras.init()
+    scheduler.mulai()       # pengingat jalan walau Chrome ditutup
     print(f"[kosmate] db={CFG.db_path} llm={CFG.llm_model} tts={CFG.tts_provider}")
-    yield
+    try:
+        yield
+    finally:
+        await scheduler.berhenti()
 
 
 # ------------------------------------------------------------------ helpers
@@ -389,6 +394,29 @@ async def post_settings(request: Request):
     return JSONResponse({"values": val, "spec": setelan.SPEK})
 
 
+# ---------------------- token device ----------------------
+async def tokens_list(request: Request):
+    return JSONResponse({"items": auth.daftar()})
+
+
+async def tokens_add(request: Request):
+    b = await request.json()
+    nama = (b.get("nama") or "device").strip()
+    token = auth.buat(nama)
+    return JSONResponse({"nama": nama, "token": token, "sidik": auth.sidik(token)})
+
+
+async def tokens_del(request: Request):
+    nama = request.path_params["nama"]
+    return JSONResponse({"ok": auth.cabut(nama)})
+
+
+# ---------------------- antrean ucapan dari server ----------------------
+async def announce_pending(request: Request):
+    """Klien memanggil ini saat aktif: kalimat yang tertinggal saat Chrome mati."""
+    return JSONResponse({"items": extras.ambil_announce()})
+
+
 # ---------------------- pengingat, jurnal, kuota, catatan ----------------------
 async def reminders_list(request: Request):
     return JSONResponse({"items": extras.daftar_reminder()})
@@ -512,6 +540,10 @@ routes = [
     Route("/api/greeting", greeting, methods=["POST"]),
     Route("/api/stt", transcribe, methods=["POST"]),
     Route("/api/mode", set_mode, methods=["POST"]),
+    Route("/api/tokens", tokens_list),
+    Route("/api/tokens", tokens_add, methods=["POST"]),
+    Route("/api/tokens/{nama}", tokens_del, methods=["DELETE"]),
+    Route("/api/announce", announce_pending),
     Route("/api/reminders", reminders_list),
     Route("/api/reminders", reminders_add, methods=["POST"]),
     Route("/api/reminders/due", reminders_due),
@@ -545,28 +577,56 @@ app = Starlette(routes=routes, lifespan=lifespan, exception_handlers={HTTPExcept
 
 
 class PinGate:
-    """Gerbang PIN untuk akses lewat tunnel publik.
+    """Gerbang akses untuk request dari luar (tunnel).
 
-    - lokal (127.0.0.1) selalu lolos, biar tetap gampang dipakai di HP sendiri
-    - kalau data/pin.txt belum ada, gerbang mati total
+    Urutan izin:
+      1. lokal (127.0.0.1 / ::1) selalu lolos
+      2. token device (header X-Kos-Token atau ?token=) -> dicatat "terakhir dipakai"
+      3. cookie PIN (cara lama, tetap didukung)
+    Plus rate limit per IP supaya satu device nakal tidak menghabiskan kuota.
     """
+
+    BERAT = ("/api/tts", "/api/chat", "/api/stt", "/api/sing")
 
     def __init__(self, inner):
         self.inner = inner
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http" or not pin.aktif():
+        if scope["type"] != "http":
             return await self.inner(scope, receive, send)
 
         client = (scope.get("client") or ("", 0))[0]
-        if client in ("127.0.0.1", "::1", "localhost"):
+        lokal = client in ("127.0.0.1", "::1", "localhost")
+        path = scope.get("path", "")
+
+        # --- rate limit (berlaku juga untuk lokal, murah) ---
+        berat = any(path.startswith(b) for b in self.BERAT)
+        if not auth.batasi(client or "?", berat=berat):
+            body = b'{"error":"rate limit","detail":"terlalu banyak permintaan, tunggu sebentar"}'
+            await send({
+                "type": "http.response.start",
+                "status": 429,
+                "headers": [(b"content-type", b"application/json"),
+                            (b"retry-after", b"30"),
+                            (b"content-length", str(len(body)).encode())],
+            })
+            await send({"type": "http.response.body", "body": body})
+            return
+
+        if lokal or not pin.aktif():
             return await self.inner(scope, receive, send)
 
         from urllib.parse import parse_qs
 
+        headers = dict(scope.get("headers") or [])
         qs = parse_qs(scope.get("query_string", b"").decode("latin-1"))
+        token = (headers.get(b"x-kos-token", b"").decode("latin-1")
+                 or (qs.get("token") or [None])[0])
+        if auth.cocok(token):
+            return await self.inner(scope, receive, send)
+
         tebakan = (qs.get("pin") or [None])[0]
-        cookie = dict(scope.get("headers") or []).get(b"cookie", b"").decode("latin-1")
+        cookie = headers.get(b"cookie", b"").decode("latin-1")
         punya_cookie = ("kosmate_pin=" + pin.pin()) in cookie
 
         if pin.cocok(tebakan):

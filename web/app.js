@@ -7,7 +7,7 @@ const S = {
   speaking: false,
   autoListen: false,
   speakReply: true,
-  silenceMs: 900,
+  silenceMs: 2200,
   voice: "id-ID-GadisNeural",
   ttsMode: "auto",
   tempo: "-20%",
@@ -27,7 +27,7 @@ const S = {
   diag: {},
   recErrors: 0,
   lastSpoken: "",
-  cooldownMs: 900,
+  cooldownMs: 1200,
   speechChunk: "block", // "block" = satu blok utuh (intonasi nyambung) | "sentence" = per kalimat
   chunkChars: 400, // potongan maksimum; potongan berikutnya di-prefetch saat yang ini diputar
   ttsParallel: 2,
@@ -44,8 +44,8 @@ function loadSettings() {
     Object.assign(S, {
       autoListen: !!s.autoListen,
       speakReply: s.speakReply !== false,
-      silenceMs: Math.max(300, Math.min(60000, Number(s.silenceMs || 900))),
-      cooldownMs: Math.max(200, Math.min(15000, Number(s.cooldownMs || 900))),
+      silenceMs: Math.max(300, Math.min(60000, Number(s.silenceMs || 2200))),
+      cooldownMs: Math.max(200, Math.min(15000, Number(s.cooldownMs || 1200))),
       speechChunk: s.speechChunk === "sentence" ? "sentence" : "block",
       voice: s.voice || "id-ID-GadisNeural",
       ttsMode: s.ttsMode || "auto",
