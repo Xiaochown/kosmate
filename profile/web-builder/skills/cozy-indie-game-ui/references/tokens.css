@@ -1,0 +1,256 @@
+/* ==========================================================================
+   Cozy indie-game UI — reference recipes
+   Copy the :root block, then the component you need. All values proven on a
+   shipped mobile PWA (360–414px). Nothing here needs a framework or build step.
+   ========================================================================== */
+
+:root {
+  /* paper — warm oat linen, NOT buttery yellow */
+  --parch: #f3e9d5;
+  --parch-2: #ebdfc5;
+  --parch-3: #dfcfa9;
+  --card: #fbf4e4;
+  --card-edge: #efe3c8;
+
+  /* ink — dark umber, never #000 */
+  --ink: #40301f;
+  --ink-2: #6b5136;
+  --ink-3: #8c7351;
+
+  /* wood — walnut */
+  --wood: #8a6039;
+  --wood-d: #5c3f24;
+  --wood-l: #ab8253;
+  --wood-hi: #cba36c;
+
+  /* accents — muted, harvest & sage */
+  --amber: #cf9a4a;
+  --amber-d: #a2742c;
+  --leaf: #7d9159;
+  --leaf-d: #566839;
+  --moon: #2d3c57;
+  --red: #b25c42;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-pill: 999px;
+
+  --shadow-sm: 0 2px 0 var(--wood-l);
+  --shadow-md: 0 4px 0 var(--wood-l);
+  --shadow-btn: 0 3px 0 var(--amber-d);
+
+  --font-head: "Pixelify Sans", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Nunito", -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --wood-line: 2px solid var(--wood-d);
+  --wood-line-thick: 3px solid var(--wood-d);
+}
+
+/* ---------------------------------------------------------------- base */
+* { box-sizing: border-box; }
+html, body { margin: 0; max-width: 100%; overflow-x: hidden; }
+body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink);
+  background-color: var(--parch);
+  /* procedural grain, see asset_pipeline.py -> paper_texture() */
+  background-image: url("assets/tex-paper.webp");
+  background-size: 256px 256px;
+  -webkit-text-size-adjust: 100%;
+}
+h1, h2, h3, .display {
+  font-family: var(--font-head);
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  margin: 0 0 6px;
+}
+
+/* ------------------------------------------------------------ app shell */
+.app {
+  display: grid;
+  /* header · plank · chips · banner · content · composer */
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+  min-height: 100dvh;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* ---------------------------------------------------------------- topbar */
+/* ONE row. Icon-only nav under 440px, otherwise it wraps and eats 30px. */
+.topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  max-height: 56px;
+  padding: 6px 10px;
+  background-color: var(--wood);
+  background-image: url("assets/tex-wood-dark.webp");
+  background-size: 512px 512px;
+  border-bottom: var(--wood-line-thick);
+  color: var(--parch);
+}
+.topnav { display: flex; gap: 4px; flex-wrap: nowrap; }
+.topnav .link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--parch);
+  font: 600 12px/1 var(--font-body);
+  cursor: pointer;
+}
+.topnav .link:hover { background: rgba(0, 0, 0, 0.18); }
+@media (max-width: 440px) {
+  .topnav .lbl { display: none; }   /* icon-only: no wrap, no overflow */
+  .topnav .link { padding: 6px 8px; }
+}
+
+/* thin wooden divider — cheap "game" signal */
+.plank {
+  height: 13px;
+  background-color: var(--wood);
+  background-image: url("assets/orn-wood-edge.webp");
+  background-repeat: repeat-x;
+  background-size: auto 13px;
+  border-bottom: var(--wood-line);
+}
+
+/* ---------------------------------------------------------------- panels */
+/* Layered: dark outline + cream face + inner highlight. Flat = template. */
+.panel, .card, .sheet {
+  position: relative;
+  background: var(--card);
+  border: var(--wood-line-thick);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md), inset 0 1px 0 var(--card-edge);
+}
+.panel::after, .card::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid var(--card-edge);
+  border-radius: calc(var(--r-lg) - 4px);
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- buttons */
+.btn, .chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;               /* touch target */
+  padding: 0 16px;
+  font: 700 14px/1 var(--font-head);
+  color: var(--ink);
+  background: linear-gradient(180deg, #fdf6e6, var(--card-edge));
+  border: var(--wood-line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-btn);
+  cursor: pointer;
+  transition: transform 60ms ease, box-shadow 60ms ease;
+}
+.btn:active, .chip:active {
+  transform: translateY(2px);     /* physical press */
+  box-shadow: 0 1px 0 var(--amber-d);
+}
+.btn.solid {
+  color: #fff8e8;
+  background: linear-gradient(180deg, var(--amber), var(--amber-d));
+  border-color: var(--wood-d);
+}
+.btn.leaf { background: linear-gradient(180deg, var(--leaf), var(--leaf-d)); color: #f6fbef; }
+.btn:focus-visible, .chip:focus-visible { outline: 3px solid var(--moon); outline-offset: 2px; }
+
+/* ------------------------------------------------------------------ cards */
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.card { overflow: hidden; padding: 0; }
+.card.wide { grid-column: 1 / -1; }
+/* image ALWAYS on top, fixed ratio — never beside text with height:auto */
+.card-media { margin: 0; aspect-ratio: 16 / 10; overflow: hidden; border-bottom: var(--wood-line); }
+.card-media img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; }
+.card-body { padding: 10px 12px 12px; }
+.card-body h3 { font-size: 15px; }
+.card-body p { margin: 0; font-size: 12.5px; color: var(--ink-2); }
+@media (max-width: 360px) { .cards { grid-template-columns: 1fr; } }
+
+/* ----------------------------------------------------------------- mascot */
+/* One character, several poses. Same frame, same scale, same background. */
+.orb {
+  width: clamp(112px, 34vw, 140px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: var(--wood-line-thick);
+  background: radial-gradient(circle at 50% 35%, #fff8e6, var(--parch-3));
+  box-shadow: var(--shadow-md), inset 0 2px 0 #fffdf6;
+  overflow: hidden;
+}
+.orb img, .mascot { width: 100%; height: 100%; object-fit: cover; object-position: 50% 38%; }
+.orb[data-state="listening"] { border-color: var(--leaf); }
+.orb[data-state="thinking"]  { border-color: var(--amber); }
+.orb[data-state="speaking"]  { border-color: var(--moon); }
+
+/* ------------------------------------------------------------------ sheet */
+.sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  max-height: 88dvh;
+  display: none;
+  flex-direction: column;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  padding: 0;
+  z-index: 40;
+}
+.sheet.open { display: flex; }
+.sheet-head {
+  position: sticky;               /* user must always be able to close it */
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--parch-2);
+  border-bottom: var(--wood-line);
+}
+.sheet-body { overflow-y: auto; padding: 12px 14px 20px; }
+
+/* ------------------------------------------------------------------ forms */
+.field { display: grid; gap: 4px; margin-bottom: 12px; }
+.field label { font: 700 12px/1 var(--font-body); color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.4px; }
+input, select, textarea {
+  font: 400 15px/1.4 var(--font-body);
+  color: var(--ink);
+  background: #fffdf6;
+  border: var(--wood-line);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  min-height: 44px;
+}
+input:focus, select:focus, textarea:focus { outline: 3px solid var(--amber); outline-offset: 1px; }
+.tiny { font-size: 11.5px; color: var(--ink-3); }
+
+/* ----------------------------------------------------------------- switch */
+.switch {
+  min-width: 64px; height: 34px; padding: 0 12px;
+  border: var(--wood-line); border-radius: var(--r-pill);
+  background: var(--parch-3); color: var(--ink-2);
+  font: 700 12px/1 var(--font-body); cursor: pointer;
+}
+.switch.on { background: var(--leaf); border-color: var(--leaf-d); color: #f6fbef; }
+
+/* --------------------------------------------------------------- reduced */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
