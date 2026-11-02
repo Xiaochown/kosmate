@@ -20,11 +20,11 @@ from starlette.applications import Starlette
 from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
-from starlette.responses import JSONResponse, StreamingResponse
+from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from . import auth, extras, memory, migrate, persona, pin, scheduler, stt, tts, voices
+from . import auth, extras, memory, metrics, migrate, persona, pin, scheduler, sing, stt, tts, voices
 from . import settings as setelan
 from .config import CFG, ROOT
 from .llm import complete, stream_chat
@@ -135,9 +135,15 @@ async def chat(request: Request):
     async def gen():
         buf: list[str] = []
         info: dict = {}
+        import time as _t
+        _t0 = _t.perf_counter()
+        _token_pertama = [True]
         yield _sse({"type": "start"})
         try:
             async for delta in stream_chat(messages, info=info):
+                if _token_pertama[0]:
+                    metrics.catat("llm_first_token", (_t.perf_counter() - _t0) * 1000)
+                    _token_pertama[0] = False
                 buf.append(delta)
                 yield _sse({"type": "delta", "text": delta})
             # target panjang untuk mode cerita (pengantar tidur)
@@ -220,10 +226,23 @@ async def synth(request: Request):
         )
     extras.catat_pakai(tts_chars=len(text), tts_calls=1)
     return StreamingResponse(
-        _tts_guard(tts.synth_stream(text, voice=voice, rate=rate)),
+        _ukur_tts(_tts_guard(tts.synth_stream(text, voice=voice, rate=rate))),
         media_type="audio/mpeg",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+async def _ukur_tts(agen):
+    """Catat waktu sampai potongan pertama + total, buat laporan metrik."""
+    import time as _t
+    t0 = _t.perf_counter()
+    pertama = True
+    async for chunk in agen:
+        if pertama:
+            metrics.catat("tts_first_byte", (_t.perf_counter() - t0) * 1000)
+            pertama = False
+        yield chunk
+    metrics.catat("tts_total", (_t.perf_counter() - t0) * 1000)
 
 
 async def _tts_guard(agen):
@@ -394,6 +413,62 @@ async def post_settings(request: Request):
     return JSONResponse({"values": val, "spec": setelan.SPEK})
 
 
+# ---------------------- mode nyanyi ----------------------
+async def daftar_lagu(request: Request):
+    return JSONResponse({"items": sing.daftar_lagu()})
+
+
+async def nyanyi_handler(request: Request):
+    b = await request.json()
+    lirik = (b.get("lirik") or "").strip()
+    lagu = (b.get("lagu") or "pelangi").strip()
+    bpm = b.get("bpm")
+    nada = None
+    if isinstance(b.get("nada"), list):
+        try:
+            nada = [(int(n[0]), float(n[1])) for n in b["nada"]]
+        except Exception:  # noqa: BLE001
+            nada = None
+    if not lirik:
+        raise HTTPException(400, "lirik kosong")
+    try:
+        with metrics.ukur("sing"):
+            audio = await sing.nyanyi(lirik, lagu=lagu, nada_khusus=nada, bpm=bpm)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    extras.catat_pakai(tts_chars=len(lirik) * 2, tts_calls=1)
+    return Response(audio, media_type="audio/mpeg",
+                    headers={"Cache-Control": "no-store"})
+
+
+# ---------------------- metrik & briefing ----------------------
+async def laporan_metrik(request: Request):
+    """Angka nyata per komponen: dari sini ketahuan 'suara kepotong' itu salah siapa."""
+    return JSONResponse(metrics.laporan())
+
+
+async def briefing_pagi(request: Request):
+    """Ringkasan singkat: jurnal terakhir + pengingat hari ini.
+
+    Sengaja TIDAK mengarang jadwal kuliah — app tidak punya data kalender.
+    """
+    jurnal = extras.daftar_jurnal()[:1]
+    hari_ini = time.strftime("%Y-%m-%d")
+    pengingat = [
+        r for r in extras.daftar_reminder()
+        if not r.get("done") and time.strftime("%Y-%m-%d", time.localtime(r.get("due_ts", 0))) == hari_ini
+    ]
+    bagian = []
+    if jurnal:
+        bagian.append("Jurnal terakhir: " + jurnal[0].get("teks", "")[:400])
+    if pengingat:
+        jam = [time.strftime("%H:%M", time.localtime(r["due_ts"])) + " " + r["teks"] for r in pengingat[:5]]
+        bagian.append("Pengingat hari ini: " + "; ".join(jam))
+    if not bagian:
+        return JSONResponse({"ada": False, "teks": ""})
+    return JSONResponse({"ada": True, "teks": "Selamat pagi. " + " ".join(bagian)})
+
+
 # ---------------------- token device ----------------------
 async def tokens_list(request: Request):
     return JSONResponse({"items": auth.daftar()})
@@ -540,6 +615,10 @@ routes = [
     Route("/api/greeting", greeting, methods=["POST"]),
     Route("/api/stt", transcribe, methods=["POST"]),
     Route("/api/mode", set_mode, methods=["POST"]),
+    Route("/api/sing", nyanyi_handler, methods=["POST"]),
+    Route("/api/sing/songs", daftar_lagu),
+    Route("/api/metrics", laporan_metrik),
+    Route("/api/briefing", briefing_pagi),
     Route("/api/tokens", tokens_list),
     Route("/api/tokens", tokens_add, methods=["POST"]),
     Route("/api/tokens/{nama}", tokens_del, methods=["DELETE"]),

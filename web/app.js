@@ -1055,6 +1055,8 @@ async function loadFacts() {
       const b = document.createElement("button");
       b.textContent = "×";
       b.onclick = async () => {
+        const tanya = window.bolehHapus || ((x) => confirm("Hapus " + x + "?"));
+        if (!tanya("fakta ini")) return;
         await fetch("/api/memory/facts/" + f.id, { method: "DELETE" });
         d.remove();
       };

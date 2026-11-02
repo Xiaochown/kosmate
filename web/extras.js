@@ -91,6 +91,7 @@ async function muatPengingat() {
       : '<p class="tiny">No reminders yet.</p>';
     box.querySelectorAll("button[data-rid]").forEach((b) => {
       b.onclick = async () => {
+        if (!bolehHapus("pengingat ini")) return;
         await api("/api/reminders/" + b.dataset.rid, { method: "DELETE" });
         muatPengingat();
       };
@@ -150,6 +151,114 @@ function cekPengingat() {
     .catch(() => {});
 }
 
+
+
+/* ---------------------- mode nyanyi ---------------------- */
+let singAudio = null;
+
+function muatLagu() {
+  const sel = $x("singLagu");
+  if (!sel) return;
+  api("/api/sing/songs")
+    .then((j) => {
+      sel.innerHTML = (j.items || [])
+        .map((l) => '<option value="' + l.kunci + '">' + esc(l.judul) + "</option>")
+        .join("");
+    })
+    .catch(() => {});
+}
+
+async function nyanyiSekarang() {
+  const lirik = ($x("singLirik").value || "").trim();
+  const lagu = ($x("singLagu") && $x("singLagu").value) || "pelangi";
+  if (!lirik) {
+    setStatus("Tulis liriknya dulu");
+    return;
+  }
+  setStatus("Nyanyi… (" + lirik.split(/\s+/).length + " kata)");
+  try {
+    const res = await fetch("/api/sing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lirik, lagu }),
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.detail || e.error || ("HTTP " + res.status));
+    }
+    const blob = await res.blob();
+    if (!blob || blob.size < 2000) throw new Error("audio kosong");
+    hentikanNyanyi();
+    singAudio = new Audio(URL.createObjectURL(blob));
+    singAudio.onended = () => setStatus("Selesai nyanyi");
+    $x("singStop").hidden = false;
+    await singAudio.play();
+    setStatus("Nyanyi…");
+  } catch (e) {
+    setStatus("Gagal nyanyi: " + e.message);
+  }
+}
+
+function hentikanNyanyi() {
+  if (singAudio) {
+    try { singAudio.pause(); } catch (e) {}
+    singAudio = null;
+  }
+  const b = $x("singStop");
+  if (b) b.hidden = true;
+}
+
+/* ---------------------- briefing pagi ---------------------- */
+function briefingPagi() {
+  const hari = new Date().toISOString().slice(0, 10);
+  let terakhir = "";
+  try { terakhir = localStorage.getItem("kosmate.brief") || ""; } catch (e) {}
+  if (terakhir === hari) return;
+  if (new Date().getHours() < 5) return;
+  api("/api/briefing")
+    .then((j) => {
+      if (!j.ada || !j.teks) return;
+      S.replyText = j.teks;
+      S.youSaid = "";
+      showReply();
+      enqueueSpeech(j.teks);
+      try { localStorage.setItem("kosmate.brief", hari); } catch (e) {}
+      setStatus("Ringkasan pagi");
+    })
+    .catch(() => {});
+}
+
+/* ---------------------- metrik latency ---------------------- */
+function tampilkanMetrik() {
+  const box = $x("diagBox");
+  if (!box) return;
+  api("/api/metrics")
+    .then((m) => {
+      const urut = [
+        ["llm_first_token", "LLM · token pertama"],
+        ["llm_total", "LLM · total"],
+        ["tts_first_byte", "Suara · potongan pertama"],
+        ["tts_total", "Suara · total"],
+        ["stt", "Dengar (STT)"],
+      ];
+      const baris = urut
+        .filter(([k]) => m[k] && m[k].n)
+        .map(([k, label]) => {
+          const d = m[k];
+          return '<div class="fact"><div><b>' + label + "</b><br><span style='color:#6b5136'>rata " +
+            d.rata + " ms · p95 " + d.p95 + " ms · " + d.n + " sampel</span></div></div>";
+        });
+      if (!baris.length) {
+        box.insertAdjacentHTML("beforeend",
+          '<div class="fact"><div><b>Metrik</b><br><span style="color:#8c7351">belum ada sampel — coba ngobrol sekali</span></div></div>');
+        return;
+      }
+      box.insertAdjacentHTML("beforeend",
+        '<div class="fact"><div><b>Metrik latency</b><br><span style="color:#8c7351">makin kecil makin enak</span></div></div>' + baris.join(""));
+    })
+    .catch(() => {});
+}
+
 /* ------------------------------- JURNAL ------------------------------- */
 async function muatJurnal() {
   const box = $x("journalList");
@@ -196,6 +305,7 @@ async function muatCatatan() {
       : '<p class="tiny">No notes yet. Upload your lecture notes and Kai can quiz you.</p>';
     box.querySelectorAll("button[data-did]").forEach((b) => {
       b.onclick = async () => {
+        if (!bolehHapus("catatan ini")) return;
         await api("/api/notes/" + b.dataset.did, { method: "DELETE" });
         muatCatatan();
       };
@@ -263,6 +373,12 @@ async function imporMemori(file) {
 }
 
 /* ------------------------------- util ------------------------------- */
+/* dipakai semua tombol hapus: Bu Sari takut salah pencet */
+function bolehHapus(apa) {
+  if (localStorage.getItem("kosmate.confirm") === "0") return true;
+  return confirm("Hapus " + apa + "? Ini tidak bisa dibatalkan.");
+}
+
 function esc(s) {
   return String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
@@ -315,9 +431,14 @@ function initExtras() {
   if (imp) imp.addEventListener("change", (e) => imporMemori(e.target.files && e.target.files[0]));
 
   // wake word
+  on("singGo", nyanyiSekarang);
+  on("singStop", hentikanNyanyi);
+  muatLagu();
+  on("diagBtn", () => setTimeout(tampilkanMetrik, 400));
   on("setWake", () => { if (EX.toggleWake) EX.toggleWake(); });
 
   // poll
+  setTimeout(briefingPagi, 3500);
   setInterval(cekAnnounce, 15000);
   setTimeout(cekAnnounce, 2500);
   setInterval(muatKuota, 60000);

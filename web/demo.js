@@ -152,6 +152,28 @@
     if (path === "/api/import") return ok({ ok: true, episodes: 0, facts: 0 });
     if (path === "/api/mode") return ok({ mode: "temen" });
     if (path === "/api/chat") return sse(BALASAN.map((t) => ({ type: "delta", text: t })).concat([{ type: "done", text: "", memory: { facts: FACTS.length } }]));
+    if (path === "/api/sing/songs")
+      return ok({ items: [
+        { kunci: "pelangi", judul: "Pelangi (nada Twinkle Twinkle)", bpm: 100, not: 14 },
+        { kunci: "balon", judul: "Balonku (lagu anak)", bpm: 112, not: 12 },
+      ] });
+    if (path === "/api/sing") {
+      const blob = new Blob([new Uint8Array(8192)], { type: "audio/mpeg" });
+      return { ok: true, status: 200, json: async () => ({}), text: async () => "", blob: async () => blob };
+    }
+    if (path === "/api/announce") return ok({ items: [] });
+    if (path === "/api/tokens") return ok({ items: [] });
+    if (path === "/api/briefing")
+      return ok({ ada: true, teks: "Selamat pagi. Jurnal terakhir: semalam gue belajar resolusi. Pengingat hari ini: 09:00 kelas SBD." });
+    if (path === "/api/metrics")
+      return ok({
+        llm_first_token: { n: 12, rata: 640.2, p95: 910.0, akhir: 702.1 },
+        llm_total: { n: 12, rata: 3200.5, p95: 4100.0, akhir: 3010.0 },
+        tts_first_byte: { n: 20, rata: 780.4, p95: 1200.0, akhir: 690.0 },
+        tts_total: { n: 20, rata: 2100.0, p95: 2900.0, akhir: 1980.0 },
+        stt: { n: 8, rata: 900.0, p95: 1400.0, akhir: 880.0 },
+        sing: { n: 0, rata: null, p95: null, akhir: null },
+      });
     if (path === "/api/tts") { TTS_CHARS.n += 100; return ok({}); }
     if (path === "/api/stt") return ok({ text: "tes suara demo" });
     return ok({});

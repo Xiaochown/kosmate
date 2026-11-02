@@ -10,6 +10,7 @@ demo = (ROOT / "demo.js").read_text()
 app = (ROOT / "app.js").read_text()
 extras = (ROOT / "extras.js").read_text()
 wake = (ROOT / "wake.js").read_text()
+i18n = (ROOT / "i18n.js").read_text()
 
 
 def data_uri(path: pathlib.Path, mime: str) -> str:
@@ -19,7 +20,7 @@ def data_uri(path: pathlib.Path, mime: str) -> str:
 # inline gambar
 for nama, mime in (("story.webp", "image/webp"), ("focus.webp", "image/webp"),
                    ("remind.webp", "image/webp"), ("journal.webp", "image/webp"),
-                   ("banner.webp", "image/webp"), ("mascot.webp", "image/webp"),
+                   ("banner.webp", "image/webp"), ("mascot.webp", "image/webp"), ("sing.webp", "image/webp"),
                    ("mascot-listen.webp", "image/webp"), ("mascot-think.webp", "image/webp"),
                    ("mascot-speak.webp", "image/webp"), ("tex-paper.webp", "image/webp"),
                    ("tex-wood-dark.webp", "image/webp"), ("icon-192.png", "image/png")):
@@ -42,7 +43,7 @@ for nama in ("tex-paper.webp", "tex-wood-dark.webp", "tex-wood.webp", "orn-wood-
         html = html.replace(f"assets/{nama}", data_uri(f, mime))
 
 # sisip JS inline, buang tag eksternal (toleran terhadap ?v=)
-for src, isi in (("demo.js", demo), ("app.js", app), ("extras.js", extras), ("wake.js", wake)):
+for src, isi in (("demo.js", demo), ("app.js", app), ("extras.js", extras), ("wake.js", wake), ("i18n.js", i18n)):
     html = re.sub(rf'<script src="{re.escape(src)}[^"]*"></script>', lambda m, i=isi: f"<script>\n{i}\n</script>", html)
 
 (ROOT / "single.html").write_text(html)

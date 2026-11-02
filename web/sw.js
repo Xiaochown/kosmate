@@ -4,7 +4,7 @@
    CACHE dinaikkan versinya tiap kali aset berubah, supaya HP tidak menyajikan
    CSS/gambar lama setelah update (penyebab "temanya gak berubah").
 */
-const CACHE = "kai-shell-v2";
+const CACHE = "kai-shell-v3";
 const SHELL = [
   "./",
   "./index.html",
@@ -21,6 +21,7 @@ const SHELL = [
   "./assets/banner.webp",
   "./assets/tex-paper.webp",
   "./assets/tex-wood-dark.webp",
+  "./assets/sing.webp",
 ];
 
 self.addEventListener("install", (e) => {
